@@ -1,10 +1,12 @@
 
 import React, { useState } from 'react';
-import Navigation from '@/components/Navigation';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/AppSidebar';
 import Dashboard from '@/components/Dashboard';
 import ChatBot from '@/components/ChatBot';
 import TransactionHistory from '@/components/TransactionHistory';
 import Reports from '@/components/Reports';
+import Profile from '@/components/Profile';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -27,58 +29,61 @@ const Index = () => {
         return <TransactionHistory />;
       case 'reports':
         return <Reports />;
+      case 'profile':
+        return <Profile />;
       default:
         return <Dashboard />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-white">
-      {/* Header */}
-      <header className="bg-white border-b border-mango-200 sticky top-0 z-10 shadow-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-mango-500 to-mango-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-lg">🥭</span>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-mango-900">Mango</h1>
-                <p className="text-sm text-mango-600">Seu assistente financeiro de bolso</p>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-gradient-to-br from-orange-50 to-white">
+        <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        
+        <div className="flex-1 flex flex-col">
+          {/* Header */}
+          <header className="bg-white border-b border-mango-200 sticky top-0 z-10 shadow-sm">
+            <div className="container mx-auto px-4 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-mango-500 to-mango-600 rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">🥭</span>
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-mango-900">Mango</h1>
+                    <p className="text-sm text-mango-600">Seu assistente financeiro de bolso</p>
+                  </div>
+                </div>
+                
+                <div className="hidden md:block">
+                  <div className="text-right">
+                    <p className="text-sm text-mango-600">Seu dinheiro mais claro, com um simples "Oi"</p>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            <div className="hidden md:block">
-              <div className="text-right">
-                <p className="text-sm text-mango-600">Seu dinheiro mais claro, com um simples "Oi"</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+          </header>
 
-      {/* Navigation */}
-      <div className="container mx-auto px-4 py-4">
-        <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+          {/* Main Content */}
+          <main className="flex-1 container mx-auto px-4 py-8">
+            {renderContent()}
+          </main>
+
+          {/* Footer */}
+          <footer className="bg-mango-900 text-white py-8 mt-12">
+            <div className="container mx-auto px-4 text-center">
+              <div className="flex items-center justify-center space-x-2 mb-4">
+                <span className="text-2xl">🥭</span>
+                <span className="text-xl font-bold">Mango</span>
+              </div>
+              <p className="text-mango-200 mb-2">Seu assistente financeiro de bolso</p>
+              <p className="text-sm text-mango-300">Desenvolvido com ❤️ para tornar suas finanças mais simples</p>
+            </div>
+          </footer>
+        </div>
       </div>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 pb-8">
-        {renderContent()}
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-mango-900 text-white py-8 mt-12">
-        <div className="container mx-auto px-4 text-center">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <span className="text-2xl">🥭</span>
-            <span className="text-xl font-bold">Mango</span>
-          </div>
-          <p className="text-mango-200 mb-2">Seu assistente financeiro de bolso</p>
-          <p className="text-sm text-mango-300">Desenvolvido com ❤️ para tornar suas finanças mais simples</p>
-        </div>
-      </footer>
-    </div>
+    </SidebarProvider>
   );
 };
 
