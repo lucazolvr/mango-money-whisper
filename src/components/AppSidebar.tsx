@@ -28,7 +28,7 @@ const AppSidebar = ({ activeTab, onTabChange }: AppSidebarProps) => {
   ];
 
   return (
-    <Sidebar className="border-r border-mango-200 bg-white">
+    <Sidebar className="border-r border-mango-200 bg-white hidden lg:flex">
       <SidebarHeader className="p-4 border-b border-mango-200">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-gradient-to-r from-mango-500 to-mango-600 rounded-full flex items-center justify-center">
@@ -43,24 +43,24 @@ const AppSidebar = ({ activeTab, onTabChange }: AppSidebarProps) => {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-mango-700 font-medium">
+          <SidebarGroupLabel className="text-mango-700 font-medium px-3 py-2">
             Navegação
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1 px-2">
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
                     onClick={() => onTabChange(item.id)}
                     isActive={activeTab === item.id}
-                    className={`w-full justify-start ${
+                    className={`w-full justify-start px-3 py-2.5 rounded-lg transition-all duration-200 ${
                       activeTab === item.id
-                        ? 'bg-mango-100 text-mango-700 border-r-2 border-mango-500'
-                        : 'text-mango-600 hover:bg-mango-50'
+                        ? 'bg-mango-100 text-mango-700 border-l-4 border-mango-500 font-medium'
+                        : 'text-mango-600 hover:bg-mango-50 hover:text-mango-700'
                     }`}
                   >
-                    <item.icon className="mr-3 h-4 w-4" />
-                    <span>{item.label}</span>
+                    <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                    <span className="text-sm">{item.label}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
