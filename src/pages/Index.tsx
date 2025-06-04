@@ -6,6 +6,7 @@ import { AppHeader } from '@/components/AppHeader';
 import Dashboard from '@/components/Dashboard';
 import ChatBot from '@/components/ChatBot';
 import TransactionHistory from '@/components/TransactionHistory';
+import Goals from '@/components/Goals';
 import Reports from '@/components/Reports';
 import Profile from '@/components/Profile';
 
@@ -28,6 +29,8 @@ const Index = () => {
         );
       case 'transactions':
         return <TransactionHistory />;
+      case 'goals':
+        return <Goals />;
       case 'reports':
         return <Reports />;
       case 'profile':
