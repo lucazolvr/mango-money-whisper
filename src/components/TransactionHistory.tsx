@@ -2,46 +2,43 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowUp, ArrowDown, Search, Filter } from 'lucide-react';
-
-const allTransactions = [
-  { id: 1, description: 'Freelance - Design Logo', amount: 800.00, type: 'income', category: 'Trabalho', date: '2024-05-25' },
-  { id: 2, description: 'Supermercado Pão de Açúcar', amount: -120.50, type: 'expense', category: 'Alimentação', date: '2024-05-25' },
-  { id: 3, description: 'Uber - Centro', amount: -18.90, type: 'expense', category: 'Transporte', date: '2024-05-24' },
-  { id: 4, description: 'Pagamento Cliente Maria', amount: 450.00, type: 'income', category: 'Trabalho', date: '2024-05-24' },
-  { id: 5, description: 'Netflix', amount: -32.90, type: 'expense', category: 'Lazer', date: '2024-05-23' },
-  { id: 6, description: 'Almoço Restaurante', amount: -45.00, type: 'expense', category: 'Alimentação', date: '2024-05-23' },
-  { id: 7, description: 'Freelance - Website', amount: 1200.00, type: 'income', category: 'Trabalho', date: '2024-05-22' },
-  { id: 8, description: 'Conta de Luz', amount: -89.50, type: 'expense', category: 'Casa', date: '2024-05-22' },
-  { id: 9, description: 'Gasolina', amount: -95.00, type: 'expense', category: 'Transporte', date: '2024-05-21' },
-  { id: 10, description: 'Cinema', amount: -28.00, type: 'expense', category: 'Lazer', date: '2024-05-21' },
-];
+import { ArrowUp, ArrowDown, Search, Filter, Loader2 } from 'lucide-react';
+import { useTransactions } from '@/hooks/useTransactions';
+import { useCategories } from '@/hooks/useCategories';
 
 const TransactionHistory = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
 
-  const categories = ['Trabalho', 'Alimentação', 'Transporte', 'Casa', 'Lazer'];
+  const { transactions, loading: transactionsLoading } = useTransactions();
+  const { categories, loading: categoriesLoading } = useCategories();
 
-  const filteredTransactions = allTransactions.filter(transaction => {
-    const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'all' || transaction.type === filterType;
-    const matchesCategory = filterCategory === 'all' || transaction.category === filterCategory;
+  const filteredTransactions = transactions.filter(transaction => {
+    const matchesSearch = transaction.descricao.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === 'all' || transaction.tipo === filterType;
+    const matchesCategory = filterCategory === 'all' || transaction.categoria === filterCategory;
     
     return matchesSearch && matchesType && matchesCategory;
   });
 
   const totalIncome = filteredTransactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter(t => t.tipo === 'receita')
+    .reduce((sum, t) => sum + t.valor, 0);
 
   const totalExpenses = filteredTransactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    .filter(t => t.tipo === 'despesa')
+    .reduce((sum, t) => sum + t.valor, 0);
+
+  if (transactionsLoading || categoriesLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-mango-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -109,8 +106,8 @@ const TransactionHistory = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os tipos</SelectItem>
-                <SelectItem value="income">Receitas</SelectItem>
-                <SelectItem value="expense">Gastos</SelectItem>
+                <SelectItem value="receita">Receitas</SelectItem>
+                <SelectItem value="despesa">Gastos</SelectItem>
               </SelectContent>
             </Select>
 
@@ -121,7 +118,7 @@ const TransactionHistory = () => {
               <SelectContent>
                 <SelectItem value="all">Todas as categorias</SelectItem>
                 {categories.map(category => (
-                  <SelectItem key={category} value={category}>{category}</SelectItem>
+                  <SelectItem key={category.id} value={category.nome}>{category.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -137,41 +134,48 @@ const TransactionHistory = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {filteredTransactions.map((transaction) => (
-              <div key={transaction.id} className="flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
-                <div className="flex items-center space-x-4">
-                  <div className={`p-2 rounded-full ${
-                    transaction.type === 'income' 
-                      ? 'bg-green-100 text-green-600' 
-                      : 'bg-red-100 text-red-600'
-                  }`}>
-                    {transaction.type === 'income' ? (
-                      <ArrowUp className="h-4 w-4" />
-                    ) : (
-                      <ArrowDown className="h-4 w-4" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{transaction.description}</p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <Badge variant="outline" className="text-xs">
-                        {transaction.category}
-                      </Badge>
-                      <span className="text-sm text-gray-500">
-                        {new Date(transaction.date).toLocaleDateString('pt-BR')}
-                      </span>
+          {filteredTransactions.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>Nenhuma transação encontrada.</p>
+              <p className="text-sm mt-2">Experimente ajustar os filtros ou adicionar novas transações.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredTransactions.map((transaction) => (
+                <div key={transaction.id} className="flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center space-x-4">
+                    <div className={`p-2 rounded-full ${
+                      transaction.tipo === 'receita' 
+                        ? 'bg-green-100 text-green-600' 
+                        : 'bg-red-100 text-red-600'
+                    }`}>
+                      {transaction.tipo === 'receita' ? (
+                        <ArrowUp className="h-4 w-4" />
+                      ) : (
+                        <ArrowDown className="h-4 w-4" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{transaction.descricao}</p>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <Badge variant="outline" className="text-xs">
+                          {transaction.categoria}
+                        </Badge>
+                        <span className="text-sm text-gray-500">
+                          {new Date(transaction.data).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
                     </div>
                   </div>
+                  <div className={`text-lg font-semibold ${
+                    transaction.tipo === 'receita' ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {transaction.tipo === 'receita' ? '+' : ''}R$ {Math.abs(transaction.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
                 </div>
-                <div className={`text-lg font-semibold ${
-                  transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {transaction.type === 'income' ? '+' : ''}R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

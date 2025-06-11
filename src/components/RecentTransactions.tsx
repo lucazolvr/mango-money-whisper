@@ -1,76 +1,55 @@
 
 import React from 'react';
-import { ArrowUp, ArrowDown } from 'lucide-react';
-
-const transactions = [
-  {
-    id: 1,
-    description: 'Freelance - Design Logo',
-    amount: 800.00,
-    type: 'income',
-    category: 'Trabalho',
-    date: '2024-05-25',
-  },
-  {
-    id: 2,
-    description: 'Supermercado Pão de Açúcar',
-    amount: -120.50,
-    type: 'expense',
-    category: 'Alimentação',
-    date: '2024-05-25',
-  },
-  {
-    id: 3,
-    description: 'Uber - Centro',
-    amount: -18.90,
-    type: 'expense',
-    category: 'Transporte',
-    date: '2024-05-24',
-  },
-  {
-    id: 4,
-    description: 'Pagamento Cliente Maria',
-    amount: 450.00,
-    type: 'income',
-    category: 'Trabalho',
-    date: '2024-05-24',
-  },
-  {
-    id: 5,
-    description: 'Netflix',
-    amount: -32.90,
-    type: 'expense',
-    category: 'Lazer',
-    date: '2024-05-23',
-  },
-];
+import { ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
+import { useTransactions } from '@/hooks/useTransactions';
 
 export const RecentTransactions = () => {
+  const { transactions, loading } = useTransactions();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-mango-500" />
+      </div>
+    );
+  }
+
+  const recentTransactions = transactions.slice(0, 5);
+
+  if (recentTransactions.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        <p>Nenhuma transação encontrada.</p>
+        <p className="text-sm mt-2">Adicione sua primeira transação através do chat!</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      {transactions.map((transaction) => (
+      {recentTransactions.map((transaction) => (
         <div key={transaction.id} className="flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
           <div className="flex items-center space-x-3">
             <div className={`p-2 rounded-full ${
-              transaction.type === 'income' 
+              transaction.tipo === 'receita' 
                 ? 'bg-green-100 text-green-600' 
                 : 'bg-red-100 text-red-600'
             }`}>
-              {transaction.type === 'income' ? (
+              {transaction.tipo === 'receita' ? (
                 <ArrowUp className="h-4 w-4" />
               ) : (
                 <ArrowDown className="h-4 w-4" />
               )}
             </div>
             <div>
-              <p className="font-medium text-gray-900">{transaction.description}</p>
-              <p className="text-sm text-gray-500">{transaction.category} • {new Date(transaction.date).toLocaleDateString('pt-BR')}</p>
+              <p className="font-medium text-gray-900">{transaction.descricao}</p>
+              <p className="text-sm text-gray-500">{transaction.categoria} • {new Date(transaction.data).toLocaleDateString('pt-BR')}</p>
             </div>
           </div>
           <div className={`text-lg font-semibold ${
-            transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+            transaction.tipo === 'receita' ? 'text-green-600' : 'text-red-600'
           }`}>
-            {transaction.type === 'income' ? '+' : ''}R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            {transaction.tipo === 'receita' ? '+' : ''}R$ {Math.abs(transaction.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
         </div>
       ))}

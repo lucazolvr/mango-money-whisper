@@ -2,16 +2,43 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { TrendingUp, TrendingDown, Wallet, CreditCard, AlertCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, CreditCard, AlertCircle, Loader2 } from 'lucide-react';
 import { BalanceChart } from './BalanceChart';
 import { CategoryChart } from './CategoryChart';
 import { RecentTransactions } from './RecentTransactions';
+import { useTransactions } from '@/hooks/useTransactions';
+import { useGoals } from '@/hooks/useGoals';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Dashboard = () => {
-  const balance = 2500.50;
-  const income = 3200.00;
-  const expenses = 1800.50;
-  const savings = balance - expenses;
+  const { transactions, loading: transactionsLoading } = useTransactions();
+  const { goals, loading: goalsLoading } = useGoals();
+  const { user } = useAuth();
+
+  // Calcular métricas financeiras
+  const income = transactions
+    .filter(t => t.tipo === 'receita')
+    .reduce((sum, t) => sum + t.valor, 0);
+  
+  const expenses = transactions
+    .filter(t => t.tipo === 'despesa')
+    .reduce((sum, t) => sum + t.valor, 0);
+  
+  const balance = income - expenses;
+
+  // Meta principal (primeira meta ativa)
+  const mainGoal = goals.find(g => g.status === 'ativa');
+  const goalProgress = mainGoal ? (mainGoal.valor_atual / mainGoal.valor_alvo) * 100 : 0;
+
+  const userName = user?.user_metadata?.nome_completo || 'Usuário';
+
+  if (transactionsLoading || goalsLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-mango-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -19,7 +46,7 @@ const Dashboard = () => {
       <div className="bg-gradient-to-r from-mango-500 to-mango-600 rounded-3xl p-6 text-white">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-2xl font-bold">Olá, Carla! 👋</h2>
+            <h2 className="text-2xl font-bold">Olá, {userName}! 👋</h2>
             <p className="text-mango-100">Aqui está sua situação financeira de hoje</p>
           </div>
           <div className="text-right">
@@ -51,41 +78,54 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="border-mango-200 hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-mango-700">Meta de Economia</CardTitle>
+            <CardTitle className="text-sm font-medium text-mango-700">
+              {mainGoal ? mainGoal.titulo : 'Meta de Economia'}
+            </CardTitle>
             <Wallet className="h-4 w-4 text-mango-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-mango-900">68%</div>
-            <Progress value={68} className="mt-2" />
+            <div className="text-2xl font-bold text-mango-900">
+              {Math.round(goalProgress)}%
+            </div>
+            <Progress value={goalProgress} className="mt-2" />
             <p className="text-xs text-muted-foreground mt-2">
-              Faltam R$ 320 para sua meta mensal
+              {mainGoal 
+                ? `R$ ${(mainGoal.valor_alvo - mainGoal.valor_atual).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} restantes`
+                : 'Crie sua primeira meta!'
+              }
             </p>
           </CardContent>
         </Card>
 
         <Card className="border-mango-200 hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-mango-700">Gastos vs Orçamento</CardTitle>
+            <CardTitle className="text-sm font-medium text-mango-700">Economia Este Mês</CardTitle>
             <CreditCard className="h-4 w-4 text-mango-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">-22%</div>
-            <Progress value={78} className="mt-2" />
+            <div className={`text-2xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              R$ {Math.abs(balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Você está gastando menos que o planejado!
+              {balance >= 0 ? 'Você está economizando!' : 'Gastos maiores que receitas'}
             </p>
           </CardContent>
         </Card>
 
         <Card className="border-yellow-200 bg-yellow-50 hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-yellow-700">Próximos Vencimentos</CardTitle>
+            <CardTitle className="text-sm font-medium text-yellow-700">Metas Ativas</CardTitle>
             <AlertCircle className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-900">3</div>
+            <div className="text-2xl font-bold text-yellow-900">
+              {goals.filter(g => g.status === 'ativa').length}
+            </div>
             <p className="text-xs text-yellow-600 mt-2">
-              Cartão de crédito vence em 5 dias
+              {goals.filter(g => g.status === 'ativa').length === 0 
+                ? 'Crie sua primeira meta!' 
+                : 'metas em andamento'
+              }
             </p>
           </CardContent>
         </Card>
