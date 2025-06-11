@@ -34,7 +34,19 @@ export const useGoals = () => {
         return;
       }
 
-      setGoals(data || []);
+      // Garantir que os tipos estão corretos
+      const typedGoals = (data || []).map(goal => ({
+        id: goal.id,
+        titulo: goal.titulo,
+        descricao: goal.descricao,
+        valor_alvo: goal.valor_alvo,
+        valor_atual: goal.valor_atual,
+        data_limite: goal.data_limite,
+        status: goal.status as 'ativa' | 'concluida' | 'pausada',
+        created_at: goal.created_at
+      }));
+
+      setGoals(typedGoals);
     } catch (error) {
       console.error('Erro ao buscar metas:', error);
     } finally {

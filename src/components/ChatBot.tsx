@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Send, Mic, Plus, TrendingUp } from 'lucide-react';
+import { Send, Mic, Plus, TrendingUp, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   id: number;
@@ -24,8 +26,10 @@ const ChatBot = () => {
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const quickActions = [
     { label: 'Registrar gasto', icon: Plus },
@@ -33,8 +37,8 @@ const ChatBot = () => {
     { label: 'Falar com Mango', icon: Mic },
   ];
 
-  const handleSendMessage = () => {
-    if (!inputMessage.trim()) return;
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || !user) return;
 
     const userMessage: Message = {
       id: messages.length + 1,
@@ -44,42 +48,52 @@ const ChatBot = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    setInputMessage('');
+    setIsLoading(true);
 
-    // Simular resposta do bot
-    setTimeout(() => {
-      const botResponse = generateBotResponse(inputMessage);
+    try {
+      // Chamar a Edge Function do Supabase
+      const { data, error } = await supabase.functions.invoke('chat-ai', {
+        body: {
+          message: inputMessage,
+          userId: user.id
+        }
+      });
+
+      if (error) {
+        console.error('Erro ao chamar Edge Function:', error);
+        throw error;
+      }
+
       const botMessage: Message = {
         id: messages.length + 2,
-        content: botResponse,
+        content: data.response || 'Desculpe, não consegui processar sua mensagem.',
         sender: 'bot',
         timestamp: new Date(),
       };
+
       setMessages(prev => [...prev, botMessage]);
-    }, 1000);
 
-    setInputMessage('');
-  };
-
-  const generateBotResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase();
-    
-    if (input.includes('gasto') || input.includes('gastei')) {
-      return 'Perfeito! Para registrar um gasto, me conta: quanto você gastou e com o quê? Por exemplo: "Gastei R$ 50 no supermercado" 🛒';
+    } catch (error) {
+      console.error('Erro no chat:', error);
+      
+      const errorMessage: Message = {
+        id: messages.length + 2,
+        content: 'Desculpe, ocorreu um erro. Tente novamente em alguns instantes.',
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+      
+      toast({
+        title: "Erro no chat",
+        description: "Não foi possível processar sua mensagem",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    
-    if (input.includes('receita') || input.includes('ganhei')) {
-      return 'Ótimo! Me conta quanto você recebeu e de onde veio essa grana? Por exemplo: "Recebi R$ 800 do freelance" 💰';
-    }
-    
-    if (input.includes('saldo') || input.includes('quanto tenho')) {
-      return 'Seu saldo atual é de R$ 2.500,50! Você está indo bem este mês, gastou 22% menos que o planejado 📈';
-    }
-    
-    if (input.includes('relatório') || input.includes('resumo')) {
-      return 'Claro! Este mês você gastou mais com alimentação (35%) e transporte (25%). Quer que eu mostre os detalhes? 📊';
-    }
-    
-    return 'Entendi! Posso te ajudar a registrar gastos e receitas, ver seu saldo, criar relatórios ou responder dúvidas sobre suas finanças. O que você gostaria de fazer? 😊';
   };
 
   const handleVoiceInput = () => {
@@ -90,7 +104,7 @@ const ChatBot = () => {
     });
     
     if (!isListening) {
-      // Simular transcrição de voz
+      // Simular transcrição de voz (implementar WebSpeech API depois)
       setTimeout(() => {
         setInputMessage("Gastei R$ 85 no supermercado hoje");
         setIsListening(false);
@@ -156,6 +170,17 @@ const ChatBot = () => {
               </div>
             </div>
           ))}
+          
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-gray-100 p-3 rounded-2xl">
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <p className="text-sm text-gray-600">Mango está pensando...</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Input de Mensagem */}
@@ -165,22 +190,29 @@ const ChatBot = () => {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               placeholder="Digite sua mensagem ou clique no microfone..."
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
               className="flex-1 border-mango-200 focus:border-mango-500"
+              disabled={isLoading}
             />
             <Button
               onClick={handleVoiceInput}
               variant="outline"
               size="icon"
               className={`border-mango-200 hover:bg-mango-50 ${isListening ? 'bg-red-500 text-white' : ''}`}
+              disabled={isLoading}
             >
               <Mic className={`h-4 w-4 ${isListening ? 'animate-pulse' : ''}`} />
             </Button>
             <Button 
               onClick={handleSendMessage}
               className="bg-mango-500 hover:bg-mango-600"
+              disabled={isLoading || !inputMessage.trim()}
             >
-              <Send className="h-4 w-4" />
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>

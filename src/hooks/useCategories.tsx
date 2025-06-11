@@ -31,7 +31,16 @@ export const useCategories = () => {
         return;
       }
 
-      setCategories(data || []);
+      // Garantir que os tipos estão corretos
+      const typedCategories = (data || []).map(cat => ({
+        id: cat.id,
+        nome: cat.nome,
+        tipo: cat.tipo as 'receita' | 'despesa',
+        cor: cat.cor,
+        icone: cat.icone
+      }));
+
+      setCategories(typedCategories);
     } catch (error) {
       console.error('Erro ao buscar categorias:', error);
     } finally {
