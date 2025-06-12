@@ -14,14 +14,17 @@ serve(async (req) => {
   }
 
   try {
-    const { action, data } = await req.json();
+    const { action, data, credentials } = await req.json();
     
-    const pluggyClientId = Deno.env.get('PLUGGY_CLIENT_ID');
-    const pluggyClientSecret = Deno.env.get('PLUGGY_CLIENT_SECRET');
+    // Usar credenciais do frontend ou variáveis de ambiente como fallback
+    const pluggyClientId = credentials?.clientId || Deno.env.get('PLUGGY_CLIENT_ID');
+    const pluggyClientSecret = credentials?.clientSecret || Deno.env.get('PLUGGY_CLIENT_SECRET');
     
     if (!pluggyClientId || !pluggyClientSecret) {
       throw new Error('Credenciais do Pluggy não configuradas');
     }
+
+    console.log('Usando credenciais Pluggy:', { clientId: pluggyClientId ? 'configurado' : 'não configurado' });
 
     // Configurar Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -30,6 +33,8 @@ serve(async (req) => {
 
     // Obter token de acesso do Pluggy
     const getAccessToken = async () => {
+      console.log('Solicitando token de acesso do Pluggy...');
+      
       const tokenResponse = await fetch('https://api.pluggy.ai/auth', {
         method: 'POST',
         headers: {
@@ -42,10 +47,13 @@ serve(async (req) => {
       });
 
       if (!tokenResponse.ok) {
-        throw new Error('Erro ao obter token do Pluggy');
+        const errorText = await tokenResponse.text();
+        console.error('Erro ao obter token:', errorText);
+        throw new Error(`Erro ao obter token do Pluggy: ${tokenResponse.status}`);
       }
 
       const tokenData = await tokenResponse.json();
+      console.log('Token obtido com sucesso');
       return tokenData.accessToken;
     };
 
@@ -54,6 +62,7 @@ serve(async (req) => {
         // Buscar conectores disponíveis (bancos)
         const accessToken = await getAccessToken();
         
+        console.log('Buscando conectores...');
         const connectorsResponse = await fetch('https://api.pluggy.ai/connectors', {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -61,10 +70,13 @@ serve(async (req) => {
         });
 
         if (!connectorsResponse.ok) {
-          throw new Error('Erro ao buscar conectores');
+          const errorText = await connectorsResponse.text();
+          console.error('Erro ao buscar conectores:', errorText);
+          throw new Error(`Erro ao buscar conectores: ${connectorsResponse.status}`);
         }
 
         const connectors = await connectorsResponse.json();
+        console.log(`Encontrados ${connectors.results?.length || 0} conectores`);
         
         return new Response(JSON.stringify({ 
           connectors: connectors.results,
@@ -77,6 +89,7 @@ serve(async (req) => {
         // Criar nova conexão com instituição financeira
         const token = await getAccessToken();
         
+        console.log('Criando item para conector:', data.connectorId);
         const itemResponse = await fetch('https://api.pluggy.ai/items', {
           method: 'POST',
           headers: {
@@ -90,10 +103,13 @@ serve(async (req) => {
         });
 
         if (!itemResponse.ok) {
-          throw new Error('Erro ao criar conexão');
+          const errorText = await itemResponse.text();
+          console.error('Erro ao criar item:', errorText);
+          throw new Error(`Erro ao criar conexão: ${itemResponse.status}`);
         }
 
         const item = await itemResponse.json();
+        console.log('Item criado com sucesso:', item.id);
         
         // Salvar conexão no banco de dados
         const { error: saveError } = await supabase
@@ -108,6 +124,8 @@ serve(async (req) => {
 
         if (saveError) {
           console.error('Erro ao salvar conexão:', saveError);
+        } else {
+          console.log('Conexão salva no banco de dados');
         }
 
         return new Response(JSON.stringify({ 
@@ -121,6 +139,7 @@ serve(async (req) => {
         // Buscar contas de um item conectado
         const accountsToken = await getAccessToken();
         
+        console.log('Buscando contas para item:', data.itemId);
         const accountsResponse = await fetch(`https://api.pluggy.ai/accounts?itemId=${data.itemId}`, {
           headers: {
             'Authorization': `Bearer ${accountsToken}`,
@@ -128,10 +147,13 @@ serve(async (req) => {
         });
 
         if (!accountsResponse.ok) {
-          throw new Error('Erro ao buscar contas');
+          const errorText = await accountsResponse.text();
+          console.error('Erro ao buscar contas:', errorText);
+          throw new Error(`Erro ao buscar contas: ${accountsResponse.status}`);
         }
 
         const accounts = await accountsResponse.json();
+        console.log(`Encontradas ${accounts.results?.length || 0} contas`);
         
         return new Response(JSON.stringify({ 
           accounts: accounts.results,
@@ -144,6 +166,7 @@ serve(async (req) => {
         // Buscar transações de uma conta
         const transactionsToken = await getAccessToken();
         
+        console.log('Buscando transações para conta:', data.accountId);
         const transactionsResponse = await fetch(`https://api.pluggy.ai/transactions?accountId=${data.accountId}&from=${data.from}&to=${data.to}`, {
           headers: {
             'Authorization': `Bearer ${transactionsToken}`,
@@ -151,10 +174,13 @@ serve(async (req) => {
         });
 
         if (!transactionsResponse.ok) {
-          throw new Error('Erro ao buscar transações');
+          const errorText = await transactionsResponse.text();
+          console.error('Erro ao buscar transações:', errorText);
+          throw new Error(`Erro ao buscar transações: ${transactionsResponse.status}`);
         }
 
         const transactions = await transactionsResponse.json();
+        console.log(`Encontradas ${transactions.results?.length || 0} transações`);
         
         return new Response(JSON.stringify({ 
           transactions: transactions.results,

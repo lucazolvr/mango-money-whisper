@@ -35,13 +35,26 @@ export const usePluggy = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  const getStoredCredentials = () => {
+    const stored = localStorage.getItem('pluggy_credentials');
+    if (!stored) {
+      throw new Error('Credenciais Pluggy não configuradas');
+    }
+    return JSON.parse(stored);
+  };
+
   const getConnectors = async (): Promise<Connector[]> => {
     if (!user) throw new Error('Usuário não autenticado');
     
     setLoading(true);
     try {
+      const credentials = getStoredCredentials();
+      
       const { data, error } = await supabase.functions.invoke('pluggy-connect', {
-        body: { action: 'getConnectors' }
+        body: { 
+          action: 'getConnectors',
+          credentials
+        }
       });
 
       if (error) throw error;
@@ -65,9 +78,12 @@ export const usePluggy = () => {
     
     setLoading(true);
     try {
+      const credentials = getStoredCredentials();
+      
       const { data, error } = await supabase.functions.invoke('pluggy-connect', {
         body: { 
           action: 'createItem',
+          credentials,
           data: {
             connectorId,
             connectorName,
@@ -103,9 +119,12 @@ export const usePluggy = () => {
     
     setLoading(true);
     try {
+      const credentials = getStoredCredentials();
+      
       const { data, error } = await supabase.functions.invoke('pluggy-connect', {
         body: { 
           action: 'getAccounts',
+          credentials,
           data: { itemId }
         }
       });
@@ -131,9 +150,12 @@ export const usePluggy = () => {
     
     setLoading(true);
     try {
+      const credentials = getStoredCredentials();
+      
       const { data, error } = await supabase.functions.invoke('pluggy-connect', {
         body: { 
           action: 'getTransactions',
+          credentials,
           data: { accountId, from, to }
         }
       });
