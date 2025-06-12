@@ -60,7 +60,7 @@ Suas capacidades:
 Sempre seja: amigável, use emojis, seja prático e dê conselhos úteis.
     `;
 
-    // Chamar OpenAI
+    // Chamar OpenAI com modelo mais barato (gpt-4o-mini)
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -68,7 +68,7 @@ Sempre seja: amigável, use emojis, seja prático e dê conselhos úteis.
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o-mini', // Modelo mais barato
         messages: [
           { role: 'system', content: contextMessage },
           { role: 'user', content: message }

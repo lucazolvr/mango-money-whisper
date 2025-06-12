@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { User, Mail, Phone, CreditCard, Shield, Settings } from 'lucide-react';
+import { User, Mail, Phone, Settings } from 'lucide-react';
+import OpenFinanceConnect from './OpenFinanceConnect';
 
 const Profile = () => {
   return (
@@ -75,7 +76,7 @@ const Profile = () => {
           <Card className="border-mango-200">
             <CardHeader>
               <CardTitle className="text-mango-900 flex items-center">
-                <Shield className="mr-2 h-5 w-5" />
+                <Settings className="mr-2 h-5 w-5" />
                 Status da Conta
               </CardTitle>
             </CardHeader>
@@ -118,62 +119,7 @@ const Profile = () => {
       </div>
 
       {/* Open Finance Integration */}
-      <Card className="border-mango-200">
-        <CardHeader>
-          <CardTitle className="text-mango-900 flex items-center">
-            <CreditCard className="mr-2 h-5 w-5" />
-            Integração Open Finance
-          </CardTitle>
-          <CardDescription>
-            Conecte suas contas bancárias e cartões para importar transações automaticamente
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-mango-50 p-4 rounded-lg mb-4">
-            <h3 className="font-medium text-mango-900 mb-2">🔒 Segurança Garantida</h3>
-            <p className="text-sm text-mango-700">
-              Utilizamos criptografia de ponta e seguimos todos os protocolos de segurança do Open Finance. 
-              Seus dados bancários estão protegidos e nunca armazenamos suas credenciais.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 border border-mango-200 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 font-bold text-xs">BB</span>
-                </div>
-                <span className="text-mango-900 font-medium">Banco do Brasil</span>
-              </div>
-              <Badge className="bg-gray-100 text-gray-600">Não Conectado</Badge>
-            </div>
-
-            <div className="flex items-center justify-between p-3 border border-mango-200 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                  <span className="text-purple-600 font-bold text-xs">NU</span>
-                </div>
-                <span className="text-mango-900 font-medium">Nubank</span>
-              </div>
-              <Badge className="bg-gray-100 text-gray-600">Não Conectado</Badge>
-            </div>
-
-            <div className="flex items-center justify-between p-3 border border-mango-200 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                  <span className="text-red-600 font-bold text-xs">IT</span>
-                </div>
-                <span className="text-mango-900 font-medium">Itaú</span>
-              </div>
-              <Badge className="bg-gray-100 text-gray-600">Não Conectado</Badge>
-            </div>
-          </div>
-
-          <Button className="w-full mt-4 bg-mango-500 hover:bg-mango-600 text-white">
-            Conectar Primeira Conta
-          </Button>
-        </CardContent>
-      </Card>
+      <OpenFinanceConnect />
     </div>
   );
 };
