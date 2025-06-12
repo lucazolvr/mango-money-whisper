@@ -39,6 +39,39 @@ export type Database = {
         }
         Relationships: []
       }
+      conexoes_bancarias: {
+        Row: {
+          connector_id: number
+          created_at: string
+          id: string
+          instituicao: string
+          pluggy_item_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connector_id: number
+          created_at?: string
+          id?: string
+          instituicao: string
+          pluggy_item_id: string
+          status: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connector_id?: number
+          created_at?: string
+          id?: string
+          instituicao?: string
+          pluggy_item_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       metas: {
         Row: {
           created_at: string
