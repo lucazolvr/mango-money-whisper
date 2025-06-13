@@ -9,6 +9,65 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      agendamentos: {
+        Row: {
+          categoria_id: string | null
+          created_at: string
+          data_vencimento: string
+          descricao: string | null
+          dias_antecedencia: number | null
+          id: string
+          notificacao_enviada: boolean | null
+          recorrencia: string | null
+          status: string | null
+          tipo: string
+          titulo: string
+          updated_at: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          categoria_id?: string | null
+          created_at?: string
+          data_vencimento: string
+          descricao?: string | null
+          dias_antecedencia?: number | null
+          id?: string
+          notificacao_enviada?: boolean | null
+          recorrencia?: string | null
+          status?: string | null
+          tipo: string
+          titulo: string
+          updated_at?: string
+          user_id: string
+          valor: number
+        }
+        Update: {
+          categoria_id?: string | null
+          created_at?: string
+          data_vencimento?: string
+          descricao?: string | null
+          dias_antecedencia?: number | null
+          id?: string
+          notificacao_enviada?: boolean | null
+          recorrencia?: string | null
+          status?: string | null
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamentos_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorias: {
         Row: {
           cor: string | null
@@ -190,7 +249,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      verificar_agendamentos_vencimento: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
