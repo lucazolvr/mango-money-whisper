@@ -7,9 +7,10 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, nomeCompleto: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, nomeCompleto: string, dataNascimento?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,17 +48,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, nomeCompleto: string) => {
+  const signUp = async (email: string, password: string, nomeCompleto: string, dataNascimento?: string) => {
     const redirectUrl = `${window.location.origin}/`;
+    
+    const userData: any = {
+      nome_completo: nomeCompleto
+    };
+    
+    if (dataNascimento) {
+      userData.data_nascimento = dataNascimento;
+    }
     
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
-        data: {
-          nome_completo: nomeCompleto
-        }
+        data: userData
       }
     });
     
@@ -77,6 +84,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await supabase.auth.signOut();
   };
 
+  const resetPassword = async (email: string) => {
+    const redirectUrl = `${window.location.origin}/auth`;
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl,
+    });
+    
+    return { error };
+  };
+
   const value = {
     user,
     session,
@@ -84,6 +101,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signUp,
     signIn,
     signOut,
+    resetPassword,
   };
 
   return (
