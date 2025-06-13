@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { User, BarChart3, MessageCircle, Clock, FileText, Target } from 'lucide-react';
+import { User, BarChart3, MessageCircle, Clock, FileText, Target, Calendar } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -23,6 +23,7 @@ const AppSidebar = ({ activeTab, onTabChange }: AppSidebarProps) => {
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'chat', label: 'Chat', icon: MessageCircle },
     { id: 'transactions', label: 'Histórico', icon: Clock },
+    { id: 'agendamentos', label: 'Agendamentos', icon: Calendar },
     { id: 'goals', label: 'Metas', icon: Target },
     { id: 'reports', label: 'Relatórios', icon: FileText },
     { id: 'profile', label: 'Perfil', icon: User },

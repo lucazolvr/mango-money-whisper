@@ -6,6 +6,7 @@ import { AppHeader } from '@/components/AppHeader';
 import Dashboard from '@/components/Dashboard';
 import ChatBot from '@/components/ChatBot';
 import TransactionHistory from '@/components/TransactionHistory';
+import Agendamentos from '@/components/Agendamentos';
 import Goals from '@/components/Goals';
 import Reports from '@/components/Reports';
 import Profile from '@/components/Profile';
@@ -29,6 +30,12 @@ const Index = () => {
         );
       case 'transactions':
         return <TransactionHistory />;
+      case 'agendamentos':
+        return (
+          <div className="max-w-7xl mx-auto">
+            <Agendamentos />
+          </div>
+        );
       case 'goals':
         return <Goals />;
       case 'reports':
