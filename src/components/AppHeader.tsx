@@ -11,20 +11,86 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
+import { useToast } from '@/hooks/use-toast';
 
 interface AppHeaderProps {
   onProfileClick: () => void;
 }
 
 const AppHeader = ({ onProfileClick }: AppHeaderProps) => {
-  const handleLogout = () => {
-    // Implementar logout
-    console.log('Logout clicked');
+  const { user, signOut } = useAuth();
+  const { profile } = useProfile();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Desconectado",
+        description: "Você foi desconectado com sucesso.",
+      });
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível desconectar. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSettings = (setting: string) => {
-    // Implementar configurações
-    console.log('Setting clicked:', setting);
+    // Implementar navegação ou abrir modais específicos para cada configuração
+    switch (setting) {
+      case 'notifications':
+        toast({
+          title: "Notificações",
+          description: "Configurações de notificações em desenvolvimento.",
+        });
+        break;
+      case 'privacy':
+        toast({
+          title: "Privacidade",
+          description: "Configurações de privacidade em desenvolvimento.",
+        });
+        break;
+      case 'security':
+        toast({
+          title: "Segurança",
+          description: "Configurações de segurança em desenvolvimento.",
+        });
+        break;
+      case 'help':
+        // Abrir uma página de ajuda ou modal
+        toast({
+          title: "Ajuda",
+          description: "Central de ajuda em desenvolvimento.",
+        });
+        break;
+      case 'about':
+        toast({
+          title: "Sobre o Mango",
+          description: "Mango - Seu assistente financeiro inteligente. Versão 1.0",
+        });
+        break;
+      default:
+        console.log('Setting clicked:', setting);
+    }
+  };
+
+  const getInitials = (name: string | null) => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
+
+  const getUserName = () => {
+    return profile?.nome_completo || 'Usuário';
+  };
+
+  const getUserEmail = () => {
+    return profile?.email || user?.email || 'email@exemplo.com';
   };
 
   return (
@@ -104,17 +170,17 @@ const AppHeader = ({ onProfileClick }: AppHeaderProps) => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-9 w-9 rounded-full p-0">
                 <Avatar className="h-9 w-9">
-                  <AvatarImage src="/placeholder.svg" alt="Carla Martins" />
+                  <AvatarImage src={profile?.avatar_url || "/placeholder.svg"} alt={getUserName()} />
                   <AvatarFallback className="bg-mango-100 text-mango-700 font-semibold">
-                    CM
+                    {getInitials(getUserName())}
                   </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 bg-white border border-mango-200">
               <div className="px-3 py-2 border-b border-mango-200">
-                <p className="text-sm font-medium text-mango-900">Carla Martins</p>
-                <p className="text-xs text-mango-600">carla.martins@email.com</p>
+                <p className="text-sm font-medium text-mango-900">{getUserName()}</p>
+                <p className="text-xs text-mango-600">{getUserEmail()}</p>
               </div>
               <DropdownMenuItem 
                 onClick={onProfileClick}
