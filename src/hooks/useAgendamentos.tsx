@@ -37,7 +37,7 @@ export const useAgendamentos = () => {
         .order('data_vencimento', { ascending: true });
 
       if (error) throw error;
-      setAgendamentos(data || []);
+      setAgendamentos((data || []) as Agendamento[]);
     } catch (error) {
       console.error('Erro ao buscar agendamentos:', error);
       toast({
@@ -62,7 +62,7 @@ export const useAgendamentos = () => {
 
       if (error) throw error;
 
-      setAgendamentos(prev => [...prev, data]);
+      setAgendamentos(prev => [...prev, data as Agendamento]);
       toast({
         title: "Sucesso",
         description: "Agendamento criado com sucesso!",
@@ -89,7 +89,7 @@ export const useAgendamentos = () => {
 
       if (error) throw error;
 
-      setAgendamentos(prev => prev.map(a => a.id === id ? data : a));
+      setAgendamentos(prev => prev.map(a => a.id === id ? data as Agendamento : a));
       toast({
         title: "Sucesso",
         description: "Agendamento atualizado com sucesso!",
