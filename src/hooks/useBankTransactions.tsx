@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePluggy } from './usePluggy';
 
@@ -23,9 +23,12 @@ export const useBankTransactions = () => {
   const { user } = useAuth();
   const { getTransactions } = usePluggy();
 
-  const fetchBankTransactions = async () => {
+  const fetchBankTransactions = useCallback(async () => {
     if (!user) {
       console.log('🚫 Usuário não autenticado, pulando busca de transações bancárias');
+      setBankTransactions([]);
+      setLoading(false);
+      setError(null);
       return;
     }
     
@@ -76,19 +79,11 @@ export const useBankTransactions = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, getTransactions]);
 
   useEffect(() => {
-    // Só buscar se o usuário estiver autenticado
-    if (user) {
-      fetchBankTransactions();
-    } else {
-      // Se não há usuário, limpar os dados
-      setBankTransactions([]);
-      setLoading(false);
-      setError(null);
-    }
-  }, [user?.id]); // Dependência específica no ID do usuário
+    fetchBankTransactions();
+  }, [fetchBankTransactions]);
 
   return {
     bankTransactions,
