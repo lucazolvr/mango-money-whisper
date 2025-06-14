@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePluggy } from './usePluggy';
 
@@ -22,6 +22,7 @@ export const useBankTransactions = () => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { getTransactions } = usePluggy();
+  const hasExecutedRef = useRef(false);
 
   const fetchBankTransactions = useCallback(async () => {
     if (!user) {
@@ -31,7 +32,13 @@ export const useBankTransactions = () => {
       setError(null);
       return;
     }
+
+    if (hasExecutedRef.current && loading) {
+      console.log('🔄 Já está carregando, pulando nova execução');
+      return;
+    }
     
+    hasExecutedRef.current = true;
     setLoading(true);
     setError(null);
     
@@ -79,9 +86,16 @@ export const useBankTransactions = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]); // Removido getTransactions da dependência
+  }, [user?.id]); // Usando user?.id para evitar re-execuções desnecessárias
 
   useEffect(() => {
+    if (user && !hasExecutedRef.current) {
+      fetchBankTransactions();
+    }
+  }, [user, fetchBankTransactions]);
+
+  const refetch = useCallback(() => {
+    hasExecutedRef.current = false;
     fetchBankTransactions();
   }, [fetchBankTransactions]);
 
@@ -89,6 +103,6 @@ export const useBankTransactions = () => {
     bankTransactions,
     loading,
     error,
-    refetch: fetchBankTransactions
+    refetch
   };
 };
