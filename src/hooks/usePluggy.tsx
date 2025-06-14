@@ -19,6 +19,8 @@ export interface Account {
   balance: number;
   type: string;
   subtype: string;
+  currencyCode?: string;
+  owner?: string;
 }
 
 export interface Transaction {
@@ -28,6 +30,25 @@ export interface Transaction {
   date: string;
   type: string;
   category: string;
+  descriptionRaw?: string;
+  merchant?: {
+    name?: string;
+    businessName?: string;
+  };
+  paymentData?: {
+    receiver?: {
+      name?: string;
+      documentNumber?: { value?: string };
+    };
+    payer?: {
+      name?: string;
+      documentNumber?: { value?: string };
+    };
+  };
+  currencyCode?: string;
+  amountInAccountCurrency?: number;
+  status?: string;
+  sandbox?: boolean;
 }
 
 export const usePluggy = () => {
@@ -43,7 +64,29 @@ export const usePluggy = () => {
     return JSON.parse(stored);
   };
 
-  const getAccounts = async (itemId: string): Promise<Account[]> => {
+  const checkStatus = async (): Promise<boolean> => {
+    if (!user) throw new Error('Usuário não autenticado');
+    
+    try {
+      const credentials = getStoredCredentials();
+      
+      const { data, error } = await supabase.functions.invoke('pluggy-connect', {
+        body: { 
+          action: 'status',
+          credentials
+        }
+      });
+
+      if (error) throw error;
+      
+      return data.data?.configured || false;
+    } catch (error) {
+      console.error('Erro ao verificar status:', error);
+      return false;
+    }
+  };
+
+  const getAccounts = async (itemIds: string): Promise<Account[]> => {
     if (!user) throw new Error('Usuário não autenticado');
     
     setLoading(true);
@@ -54,18 +97,22 @@ export const usePluggy = () => {
         body: { 
           action: 'getAccounts',
           credentials,
-          data: { itemId }
+          data: { itemIds }
         }
       });
 
       if (error) throw error;
       
-      return data.accounts || [];
+      if (data.status === 'error') {
+        throw new Error(data.error);
+      }
+      
+      return data.data?.accounts || [];
     } catch (error) {
       console.error('Erro ao buscar contas:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar as contas",
+        description: `Não foi possível carregar as contas: ${error.message}`,
         variant: "destructive",
       });
       throw error;
@@ -74,7 +121,12 @@ export const usePluggy = () => {
     }
   };
 
-  const getTransactions = async (accountId: string, from: string, to: string): Promise<Transaction[]> => {
+  const getTransactions = async (accountId: string, startDate?: string, endDate?: string): Promise<{
+    transactions: Transaction[];
+    account: Account;
+    balances: any[];
+    startingBalance: number;
+  }> => {
     if (!user) throw new Error('Usuário não autenticado');
     
     setLoading(true);
@@ -85,18 +137,31 @@ export const usePluggy = () => {
         body: { 
           action: 'getTransactions',
           credentials,
-          data: { accountId, from, to }
+          data: { 
+            accountId, 
+            startDate,
+            to: endDate
+          }
         }
       });
 
       if (error) throw error;
       
-      return data.transactions || [];
+      if (data.status === 'error') {
+        throw new Error(data.error);
+      }
+      
+      return {
+        transactions: data.data?.transactions || [],
+        account: data.data?.account,
+        balances: data.data?.balances || [],
+        startingBalance: data.data?.startingBalance || 0
+      };
     } catch (error) {
       console.error('Erro ao buscar transações:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar as transações",
+        description: `Não foi possível carregar as transações: ${error.message}`,
         variant: "destructive",
       });
       throw error;
@@ -114,7 +179,7 @@ export const usePluggy = () => {
       
       const { data, error } = await supabase.functions.invoke('pluggy-connect', {
         body: { 
-          action: 'getItemsByItemId',
+          action: 'getItemById',
           credentials,
           data: { itemId }
         }
@@ -122,12 +187,16 @@ export const usePluggy = () => {
 
       if (error) throw error;
       
-      return data.item;
+      if (data.status === 'error') {
+        throw new Error(data.error);
+      }
+      
+      return data.data?.item;
     } catch (error) {
       console.error('Erro ao buscar item:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível encontrar o item",
+        description: `Não foi possível encontrar o item: ${error.message}`,
         variant: "destructive",
       });
       throw error;
@@ -138,6 +207,7 @@ export const usePluggy = () => {
 
   return {
     loading,
+    checkStatus,
     getAccounts,
     getTransactions,
     getItemById

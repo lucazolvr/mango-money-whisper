@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { CreditCard, Shield, Building2, Loader2, Settings, Key, Check, ExternalLink, BookOpen } from 'lucide-react';
+import { CreditCard, Shield, Building2, Loader2, Settings, Key, Check, ExternalLink, BookOpen, AlertCircle } from 'lucide-react';
 import { usePluggy } from '@/hooks/usePluggy';
 import { useToast } from '@/hooks/use-toast';
 
@@ -13,28 +13,38 @@ const OpenFinanceConnect = () => {
   const [pluggyCredentials, setPluggyCredentials] = useState({ 
     clientId: '', 
     clientSecret: '', 
-    itemId: '' 
+    itemIds: '' // Múltiplos IDs separados por vírgula como no Actual
   });
   const [hasStoredCredentials, setHasStoredCredentials] = useState(false);
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
-  const { loading, getAccounts, getTransactions } = usePluggy();
+  const [connectionStatus, setConnectionStatus] = useState<boolean | null>(null);
+  const { loading, checkStatus, getAccounts, getTransactions } = usePluggy();
   const { toast } = useToast();
 
   useEffect(() => {
     checkStoredCredentials();
   }, []);
 
-  const checkStoredCredentials = () => {
+  const checkStoredCredentials = async () => {
     const stored = localStorage.getItem('pluggy_credentials');
     if (stored) {
       const parsed = JSON.parse(stored);
       setPluggyCredentials(parsed);
       setHasStoredCredentials(true);
+      
+      // Verificar status da conexão
+      try {
+        const status = await checkStatus();
+        setConnectionStatus(status);
+      } catch (error) {
+        console.error('Erro ao verificar status:', error);
+        setConnectionStatus(false);
+      }
     }
   };
 
   const savePluggyCredentials = () => {
-    if (!pluggyCredentials.clientId || !pluggyCredentials.clientSecret || !pluggyCredentials.itemId) {
+    if (!pluggyCredentials.clientId || !pluggyCredentials.clientSecret || !pluggyCredentials.itemIds) {
       toast({
         title: "Erro",
         description: "Por favor, preencha todos os campos obrigatórios",
@@ -43,9 +53,26 @@ const OpenFinanceConnect = () => {
       return;
     }
 
-    localStorage.setItem('pluggy_credentials', JSON.stringify(pluggyCredentials));
+    // Validar formato dos Item IDs
+    const itemIds = pluggyCredentials.itemIds.split(',').map(id => id.trim()).filter(Boolean);
+    if (itemIds.length === 0) {
+      toast({
+        title: "Erro",
+        description: "Por favor, forneça pelo menos um Item ID válido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    localStorage.setItem('pluggy_credentials', JSON.stringify({
+      ...pluggyCredentials,
+      itemIds: itemIds.join(', ') // Normalizar formato
+    }));
+    
     setHasStoredCredentials(true);
     setIsConfigDialogOpen(false);
+    setConnectionStatus(null); // Reset status para verificar novamente
+    
     toast({
       title: "Sucesso!",
       description: "Credenciais Pluggy configuradas com sucesso",
@@ -54,8 +81,9 @@ const OpenFinanceConnect = () => {
 
   const clearCredentials = () => {
     localStorage.removeItem('pluggy_credentials');
-    setPluggyCredentials({ clientId: '', clientSecret: '', itemId: '' });
+    setPluggyCredentials({ clientId: '', clientSecret: '', itemIds: '' });
     setHasStoredCredentials(false);
+    setConnectionStatus(null);
     toast({
       title: "Credenciais removidas",
       description: "Configure novas credenciais quando desejar",
@@ -73,16 +101,22 @@ const OpenFinanceConnect = () => {
     }
 
     try {
-      const accounts = await getAccounts(pluggyCredentials.itemId);
+      setConnectionStatus(null); // Loading state
+      
+      const accounts = await getAccounts(pluggyCredentials.itemIds);
+      setConnectionStatus(true);
+      
       toast({
         title: "Sucesso!",
         description: `Conexão testada! Encontradas ${accounts.length} conta(s)`,
       });
     } catch (error) {
       console.error('Erro ao testar conexão:', error);
+      setConnectionStatus(false);
+      
       toast({
         title: "Erro",
-        description: "Falha ao conectar. Verifique suas credenciais",
+        description: "Falha ao conectar. Verifique suas credenciais e Item IDs",
         variant: "destructive",
       });
     }
@@ -99,7 +133,8 @@ const OpenFinanceConnect = () => {
     }
 
     try {
-      const accounts = await getAccounts(pluggyCredentials.itemId);
+      const accounts = await getAccounts(pluggyCredentials.itemIds);
+      
       if (accounts.length === 0) {
         toast({
           title: "Aviso",
@@ -112,35 +147,53 @@ const OpenFinanceConnect = () => {
       let totalTransactions = 0;
       const today = new Date();
       const thirtyDaysAgo = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
+      const startDate = thirtyDaysAgo.toISOString().split('T')[0];
       
       for (const account of accounts) {
-        const transactions = await getTransactions(
-          account.id,
-          thirtyDaysAgo.toISOString().split('T')[0],
-          today.toISOString().split('T')[0]
-        );
-        totalTransactions += transactions.length;
+        try {
+          const result = await getTransactions(account.id, startDate);
+          totalTransactions += result.transactions.length;
+          
+          // Aqui você pode processar e salvar as transações no seu banco de dados
+          console.log(`Conta ${account.name}: ${result.transactions.length} transações`);
+        } catch (error) {
+          console.error(`Erro ao sincronizar conta ${account.name}:`, error);
+        }
       }
 
       toast({
         title: "Sincronização concluída!",
-        description: `${totalTransactions} transações dos últimos 30 dias sincronizadas`,
+        description: `${totalTransactions} transações dos últimos 30 dias sincronizadas de ${accounts.length} conta(s)`,
       });
     } catch (error) {
       console.error('Erro ao sincronizar:', error);
       toast({
         title: "Erro",
-        description: "Falha na sincronização",
+        description: "Falha na sincronização. Verifique suas credenciais",
         variant: "destructive",
       });
     }
+  };
+
+  const getStatusIcon = () => {
+    if (!hasStoredCredentials) return <AlertCircle className="h-4 w-4 text-yellow-600" />;
+    if (connectionStatus === null) return <Loader2 className="h-4 w-4 animate-spin text-blue-600" />;
+    if (connectionStatus === true) return <Check className="h-4 w-4 text-green-600" />;
+    return <AlertCircle className="h-4 w-4 text-red-600" />;
+  };
+
+  const getStatusText = () => {
+    if (!hasStoredCredentials) return "⚠️ Configure suas credenciais Pluggy para começar";
+    if (connectionStatus === null) return "🔄 Verificando conexão...";
+    if (connectionStatus === true) return "✅ Conectado ao Pluggy com sucesso";
+    return "❌ Erro na conexão - Verifique suas credenciais";
   };
 
   return (
     <div className="space-y-6">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-mango-900 mb-2">Open Finance</h1>
-        <p className="text-mango-600">Conecte-se ao Pluggy usando suas credenciais</p>
+        <p className="text-mango-600">Conecte-se ao Pluggy usando suas credenciais (baseado no Actual Budget)</p>
       </div>
 
       {/* Configuração Pluggy */}
@@ -150,7 +203,7 @@ const OpenFinanceConnect = () => {
             <div className="flex items-center">
               <Key className="mr-2 h-5 w-5" />
               Configuração Pluggy
-              {hasStoredCredentials && <Check className="ml-2 h-4 w-4 text-green-600" />}
+              {getStatusIcon()}
             </div>
             <Dialog open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen}>
               <DialogTrigger asChild>
@@ -163,7 +216,7 @@ const OpenFinanceConnect = () => {
                 <DialogHeader>
                   <DialogTitle>Configurar Credenciais Pluggy</DialogTitle>
                   <DialogDescription>
-                    Configure suas credenciais do Pluggy seguindo o modelo do Actual Budget
+                    Configure suas credenciais do Pluggy seguindo o padrão do Actual Budget
                   </DialogDescription>
                 </DialogHeader>
                 
@@ -176,8 +229,8 @@ const OpenFinanceConnect = () => {
                         <ol className="list-decimal list-inside space-y-1">
                           <li>Acesse o <a href="https://dashboard.pluggy.ai/" target="_blank" rel="noopener noreferrer" className="underline font-medium">Dashboard Pluggy</a></li>
                           <li>Obtenha seu Client ID e Client Secret</li>
-                          <li>Conecte sua conta bancária e obtenha o Item ID</li>
-                          <li>Cole as credenciais abaixo</li>
+                          <li>Conecte suas contas bancárias e obtenha os Item IDs</li>
+                          <li>Cole as credenciais abaixo (múltiplos Item IDs separados por vírgula)</li>
                         </ol>
                       </div>
                     </div>
@@ -206,16 +259,16 @@ const OpenFinanceConnect = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="itemId">Item ID *</Label>
+                    <Label htmlFor="itemIds">Item IDs (separados por vírgula) *</Label>
                     <Input
-                      id="itemId"
+                      id="itemIds"
                       type="text"
-                      value={pluggyCredentials.itemId}
-                      onChange={(e) => setPluggyCredentials({...pluggyCredentials, itemId: e.target.value})}
-                      placeholder="Item ID da sua conta conectada no Pluggy"
+                      value={pluggyCredentials.itemIds}
+                      onChange={(e) => setPluggyCredentials({...pluggyCredentials, itemIds: e.target.value})}
+                      placeholder="78a3db91-2b6f-4f33-914f-0c5f29c5e6b1, 47cdfe32-bef9-4b82-9ea5-41b89f207749"
                     />
                     <p className="text-xs text-gray-600 mt-1">
-                      O Item ID é gerado quando você conecta uma conta bancária no Pluggy
+                      Item IDs das suas contas conectadas no Pluggy (como no Actual Budget)
                     </p>
                   </div>
                   
@@ -223,7 +276,7 @@ const OpenFinanceConnect = () => {
                     <Button 
                       onClick={savePluggyCredentials}
                       className="flex-1 bg-mango-500 hover:bg-mango-600"
-                      disabled={!pluggyCredentials.clientId || !pluggyCredentials.clientSecret || !pluggyCredentials.itemId}
+                      disabled={!pluggyCredentials.clientId || !pluggyCredentials.clientSecret || !pluggyCredentials.itemIds}
                     >
                       Salvar Credenciais
                     </Button>
@@ -243,50 +296,48 @@ const OpenFinanceConnect = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {hasStoredCredentials ? (
-            <div className="space-y-3">
-              <p className="text-sm text-mango-700">
-                ✅ Credenciais Pluggy configuradas com sucesso
-              </p>
-              <div className="text-xs text-gray-600 space-y-1">
-                <p><strong>Client ID:</strong> {pluggyCredentials.clientId?.substring(0, 8)}...</p>
-                <p><strong>Item ID:</strong> {pluggyCredentials.itemId}</p>
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={testConnection}
-                  variant="outline"
-                  size="sm"
-                  disabled={loading}
-                  className="border-mango-300 text-mango-700 hover:bg-mango-100"
-                >
-                  {loading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Shield className="mr-2 h-4 w-4" />
-                  )}
-                  Testar Conexão
-                </Button>
-                <Button 
-                  onClick={syncTransactions}
-                  size="sm"
-                  disabled={loading}
-                  className="bg-mango-500 hover:bg-mango-600"
-                >
-                  {loading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <CreditCard className="mr-2 h-4 w-4" />
-                  )}
-                  Sincronizar Transações
-                </Button>
-              </div>
-            </div>
-          ) : (
+          <div className="space-y-3">
             <p className="text-sm text-mango-700">
-              ⚠️ Configure suas credenciais Pluggy para começar a sincronizar dados bancários
+              {getStatusText()}
             </p>
-          )}
+            {hasStoredCredentials && (
+              <>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <p><strong>Client ID:</strong> {pluggyCredentials.clientId?.substring(0, 8)}...</p>
+                  <p><strong>Item IDs:</strong> {pluggyCredentials.itemIds}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={testConnection}
+                    variant="outline"
+                    size="sm"
+                    disabled={loading}
+                    className="border-mango-300 text-mango-700 hover:bg-mango-100"
+                  >
+                    {loading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Shield className="mr-2 h-4 w-4" />
+                    )}
+                    Testar Conexão
+                  </Button>
+                  <Button 
+                    onClick={syncTransactions}
+                    size="sm"
+                    disabled={loading || connectionStatus !== true}
+                    className="bg-mango-500 hover:bg-mango-600"
+                  >
+                    {loading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <CreditCard className="mr-2 h-4 w-4" />
+                    )}
+                    Sincronizar Transações
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
 
