@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -32,10 +31,6 @@ class PluggyClient {
 
     console.log('🔑 Obtendo novo token de acesso do Pluggy...');
     console.log('📡 Fazendo requisição para: https://api.pluggy.ai/auth');
-    console.log('📋 Payload:', JSON.stringify({
-      clientId: this.clientId ? `${this.clientId.substring(0, 8)}...` : 'não definido',
-      clientSecret: this.clientSecret ? 'definido' : 'não definido'
-    }));
 
     try {
       const response = await fetch('https://api.pluggy.ai/auth', {
@@ -51,7 +46,6 @@ class PluggyClient {
       });
 
       console.log(`📊 Status da resposta de auth: ${response.status}`);
-      console.log(`🔗 Headers da resposta:`, Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -62,7 +56,6 @@ class PluggyClient {
         try {
           const errorJson = JSON.parse(errorText);
           errorMessage += ` - ${errorJson.message || errorJson.error || errorText}`;
-          console.error('❌ Erro JSON:', errorJson);
         } catch {
           errorMessage += ` - ${errorText}`;
         }
@@ -73,8 +66,8 @@ class PluggyClient {
       const data = await response.json();
       console.log('📝 Resposta completa da auth:', JSON.stringify(data, null, 2));
       
-      // Diferentes estruturas possíveis de resposta
-      this.accessToken = data.accessToken || data.access_token || data.token || data.apiKey;
+      // A API da Pluggy retorna o token no campo 'apiKey'
+      this.accessToken = data.apiKey;
       
       if (!this.accessToken) {
         console.error('❌ Token de acesso não encontrado na resposta:', data);
@@ -86,7 +79,7 @@ class PluggyClient {
       this.tokenExpiry = Date.now() + (expiresIn * 1000);
       
       console.log(`✅ Token obtido com sucesso (expira em ${expiresIn}s)`);
-      console.log(`🔑 Token: ${this.accessToken.substring(0, 10)}...`);
+      console.log(`🔑 Token: ${this.accessToken.substring(0, 20)}...`);
       
       return this.accessToken;
     } catch (error) {
@@ -99,7 +92,7 @@ class PluggyClient {
     const token = await this.getAccessToken();
     
     console.log(`🏦 Buscando contas para item: ${itemId}`);
-    console.log(`🔑 Usando token: ${token.substring(0, 10)}...`);
+    console.log(`🔑 Usando token: ${token.substring(0, 20)}...`);
     
     const url = `https://api.pluggy.ai/accounts?itemId=${itemId}`;
     console.log(`📡 URL da requisição: ${url}`);
@@ -108,14 +101,18 @@ class PluggyClient {
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'X-API-KEY': token, // Pluggy usa X-API-KEY ao invés de Authorization Bearer
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
       });
 
       console.log(`📊 Status da resposta de contas: ${response.status}`);
-      console.log(`🔗 Headers da resposta:`, Object.fromEntries(response.headers.entries()));
+      console.log(`🔗 Headers da requisição enviados:`, {
+        'X-API-KEY': `${token.substring(0, 20)}...`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -165,7 +162,7 @@ class PluggyClient {
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'X-API-KEY': token, // Pluggy usa X-API-KEY
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
@@ -220,7 +217,7 @@ class PluggyClient {
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'X-API-KEY': token, // Pluggy usa X-API-KEY
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
@@ -271,7 +268,7 @@ class PluggyClient {
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'X-API-KEY': token, // Pluggy usa X-API-KEY
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
