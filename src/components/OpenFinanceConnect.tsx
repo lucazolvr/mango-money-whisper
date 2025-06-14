@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,7 @@ const OpenFinanceConnect = () => {
   const [pluggyCredentials, setPluggyCredentials] = useState({ 
     clientId: '', 
     clientSecret: '', 
-    itemIds: '' // Múltiplos IDs separados por vírgula como no Actual
+    itemIds: ''
   });
   const [hasStoredCredentials, setHasStoredCredentials] = useState(false);
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
@@ -53,7 +52,7 @@ const OpenFinanceConnect = () => {
       return;
     }
 
-    // Validar formato dos Item IDs
+    // Validar e normalizar Item IDs
     const itemIds = pluggyCredentials.itemIds.split(',').map(id => id.trim()).filter(Boolean);
     if (itemIds.length === 0) {
       toast({
@@ -64,14 +63,22 @@ const OpenFinanceConnect = () => {
       return;
     }
 
-    localStorage.setItem('pluggy_credentials', JSON.stringify({
+    const normalizedCredentials = {
       ...pluggyCredentials,
-      itemIds: itemIds.join(', ') // Normalizar formato
-    }));
-    
+      itemIds: itemIds.join(', ')
+    };
+
+    localStorage.setItem('pluggy_credentials', JSON.stringify(normalizedCredentials));
+    setPluggyCredentials(normalizedCredentials);
     setHasStoredCredentials(true);
     setIsConfigDialogOpen(false);
     setConnectionStatus(null); // Reset status para verificar novamente
+    
+    console.log('Credenciais salvas:', {
+      clientId: normalizedCredentials.clientId ? 'configurado' : 'não configurado',
+      clientSecret: normalizedCredentials.clientSecret ? 'configurado' : 'não configurado',
+      itemIds: normalizedCredentials.itemIds
+    });
     
     toast({
       title: "Sucesso!",
@@ -103,13 +110,31 @@ const OpenFinanceConnect = () => {
     try {
       setConnectionStatus(null); // Loading state
       
+      console.log('Testando conexão com Item IDs:', pluggyCredentials.itemIds);
       const accounts = await getAccounts(pluggyCredentials.itemIds);
-      setConnectionStatus(true);
       
-      toast({
-        title: "Sucesso!",
-        description: `Conexão testada! Encontradas ${accounts.length} conta(s)`,
-      });
+      if (accounts.length > 0) {
+        setConnectionStatus(true);
+        toast({
+          title: "Sucesso!",
+          description: `Conexão testada! Encontradas ${accounts.length} conta(s)`,
+        });
+        
+        // Log das contas encontradas para debug
+        console.log('Contas encontradas:', accounts.map(acc => ({
+          id: acc.id,
+          name: acc.name,
+          type: acc.type,
+          balance: acc.balance
+        })));
+      } else {
+        setConnectionStatus(false);
+        toast({
+          title: "Aviso",
+          description: "Conexão estabelecida, mas nenhuma conta foi encontrada. Verifique seus Item IDs.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error('Erro ao testar conexão:', error);
       setConnectionStatus(false);
@@ -133,12 +158,13 @@ const OpenFinanceConnect = () => {
     }
 
     try {
+      console.log('Iniciando sincronização com Item IDs:', pluggyCredentials.itemIds);
       const accounts = await getAccounts(pluggyCredentials.itemIds);
       
       if (accounts.length === 0) {
         toast({
           title: "Aviso",
-          description: "Nenhuma conta encontrada",
+          description: "Nenhuma conta encontrada para sincronização. Verifique seus Item IDs no dashboard do Pluggy.",
           variant: "destructive",
         });
         return;
@@ -149,13 +175,15 @@ const OpenFinanceConnect = () => {
       const thirtyDaysAgo = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
       const startDate = thirtyDaysAgo.toISOString().split('T')[0];
       
+      console.log(`Sincronizando ${accounts.length} conta(s) a partir de ${startDate}`);
+      
       for (const account of accounts) {
         try {
+          console.log(`Sincronizando conta: ${account.name} (${account.id})`);
           const result = await getTransactions(account.id, startDate);
           totalTransactions += result.transactions.length;
           
-          // Aqui você pode processar e salvar as transações no seu banco de dados
-          console.log(`Conta ${account.name}: ${result.transactions.length} transações`);
+          console.log(`Conta ${account.name}: ${result.transactions.length} transações encontradas`);
         } catch (error) {
           console.error(`Erro ao sincronizar conta ${account.name}:`, error);
         }
@@ -169,7 +197,7 @@ const OpenFinanceConnect = () => {
       console.error('Erro ao sincronizar:', error);
       toast({
         title: "Erro",
-        description: "Falha na sincronização. Verifique suas credenciais",
+        description: "Falha na sincronização. Verifique suas credenciais e Item IDs",
         variant: "destructive",
       });
     }
@@ -232,6 +260,10 @@ const OpenFinanceConnect = () => {
                           <li>Conecte suas contas bancárias e obtenha os Item IDs</li>
                           <li>Cole as credenciais abaixo (múltiplos Item IDs separados por vírgula)</li>
                         </ol>
+                        <p className="mt-2 text-xs text-blue-700">
+                          <strong>Dica:</strong> No dashboard do Pluggy, cada conta conectada tem um Item ID único. 
+                          Copie todos os Item IDs das contas que deseja sincronizar.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -268,7 +300,7 @@ const OpenFinanceConnect = () => {
                       placeholder="78a3db91-2b6f-4f33-914f-0c5f29c5e6b1, 47cdfe32-bef9-4b82-9ea5-41b89f207749"
                     />
                     <p className="text-xs text-gray-600 mt-1">
-                      Item IDs das suas contas conectadas no Pluggy (como no Actual Budget)
+                      Item IDs das suas contas conectadas no Pluggy. Encontre-os no dashboard após conectar suas contas bancárias.
                     </p>
                   </div>
                   

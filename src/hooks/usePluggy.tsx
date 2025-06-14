@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -93,6 +92,12 @@ export const usePluggy = () => {
     try {
       const credentials = getStoredCredentials();
       
+      console.log('Buscando contas com credenciais:', {
+        clientId: credentials.clientId ? 'configurado' : 'não configurado',
+        clientSecret: credentials.clientSecret ? 'configurado' : 'não configurado',
+        itemIds: itemIds
+      });
+      
       const { data, error } = await supabase.functions.invoke('pluggy-connect', {
         body: { 
           action: 'getAccounts',
@@ -101,18 +106,44 @@ export const usePluggy = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro na chamada da função:', error);
+        throw error;
+      }
+      
+      console.log('Resposta da função pluggy-connect:', data);
       
       if (data.status === 'error') {
+        console.error('Erro retornado pela função:', data.error);
         throw new Error(data.error);
       }
       
-      return data.data?.accounts || [];
+      const accounts = data.data?.accounts || [];
+      console.log(`Encontradas ${accounts.length} contas:`, accounts);
+      
+      if (accounts.length === 0) {
+        console.warn('Nenhuma conta encontrada. Verificando Item IDs:', itemIds);
+        toast({
+          title: "Aviso",
+          description: `Nenhuma conta encontrada para os Item IDs fornecidos. Verifique se os IDs estão corretos: ${itemIds}`,
+          variant: "destructive",
+        });
+      }
+      
+      return accounts;
     } catch (error) {
       console.error('Erro ao buscar contas:', error);
+      
+      let errorMessage = 'Erro desconhecido';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
       toast({
         title: "Erro",
-        description: `Não foi possível carregar as contas: ${error.message}`,
+        description: `Não foi possível carregar as contas: ${errorMessage}`,
         variant: "destructive",
       });
       throw error;
