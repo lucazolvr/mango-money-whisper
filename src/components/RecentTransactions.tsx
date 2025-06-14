@@ -1,6 +1,7 @@
 
 import React from 'react';
-import { ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
+import { ArrowUp, ArrowDown, Loader2, Building2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { useTransactions } from '@/hooks/useTransactions';
 
 export const RecentTransactions = () => {
@@ -20,7 +21,7 @@ export const RecentTransactions = () => {
     return (
       <div className="text-center py-8 text-gray-500">
         <p>Nenhuma transação encontrada.</p>
-        <p className="text-sm mt-2">Adicione sua primeira transação através do chat!</p>
+        <p className="text-sm mt-2">Adicione sua primeira transação através do chat ou conecte seu banco!</p>
       </div>
     );
   }
@@ -42,8 +43,21 @@ export const RecentTransactions = () => {
               )}
             </div>
             <div>
-              <p className="font-medium text-gray-900">{transaction.descricao}</p>
-              <p className="text-sm text-gray-500">{transaction.categoria} • {new Date(transaction.data).toLocaleDateString('pt-BR')}</p>
+              <div className="flex items-center space-x-2">
+                <p className="font-medium text-gray-900">{transaction.descricao}</p>
+                {transaction.isBankTransaction && (
+                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                    <Building2 className="h-3 w-3 mr-1" />
+                    Bancária
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-gray-500">
+                {transaction.categoria} • {new Date(transaction.data).toLocaleDateString('pt-BR')}
+                {transaction.isBankTransaction && transaction.accountName && (
+                  <span className="text-blue-600 ml-1">• {transaction.accountName}</span>
+                )}
+              </p>
             </div>
           </div>
           <div className={`text-lg font-semibold ${

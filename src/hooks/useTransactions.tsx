@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBankTransactions, BankTransaction } from './useBankTransactions';
 
 export interface Transaction {
   id: string;
@@ -11,17 +12,20 @@ export interface Transaction {
   categoria: string;
   data: string;
   categoria_id?: string;
+  isBankTransaction?: boolean;
+  accountId?: string;
+  accountName?: string;
 }
 
 export const useTransactions = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [manualTransactions, setManualTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { bankTransactions, loading: bankLoading } = useBankTransactions();
 
-  const fetchTransactions = async () => {
+  const fetchManualTransactions = async () => {
     if (!user) return;
     
-    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('transacoes')
@@ -32,7 +36,7 @@ export const useTransactions = () => {
         .order('data', { ascending: false });
 
       if (error) {
-        console.error('Erro ao buscar transações:', error);
+        console.error('Erro ao buscar transações manuais:', error);
         return;
       }
 
@@ -43,16 +47,19 @@ export const useTransactions = () => {
         tipo: t.tipo as 'receita' | 'despesa',
         categoria: t.categorias?.nome || 'Sem categoria',
         data: t.data,
-        categoria_id: t.categoria_id
+        categoria_id: t.categoria_id,
+        isBankTransaction: false
       })) || [];
 
-      setTransactions(formattedTransactions);
+      setManualTransactions(formattedTransactions);
     } catch (error) {
-      console.error('Erro ao buscar transações:', error);
-    } finally {
-      setLoading(false);
+      console.error('Erro ao buscar transações manuais:', error);
     }
   };
+
+  // Combinar transações manuais e bancárias
+  const transactions = [...manualTransactions, ...bankTransactions]
+    .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 
   const addTransaction = async (transaction: Omit<Transaction, 'id' | 'categoria'> & { categoria_id: string }) => {
     if (!user) return;
@@ -74,7 +81,7 @@ export const useTransactions = () => {
         throw error;
       }
 
-      await fetchTransactions();
+      await fetchManualTransactions();
     } catch (error) {
       console.error('Erro ao adicionar transação:', error);
       throw error;
@@ -82,13 +89,16 @@ export const useTransactions = () => {
   };
 
   useEffect(() => {
-    fetchTransactions();
+    fetchManualTransactions();
   }, [user]);
 
   return {
     transactions,
-    loading,
+    loading: loading || bankLoading,
     addTransaction,
-    refetch: fetchTransactions
+    refetch: () => {
+      fetchManualTransactions();
+      // O hook de transações bancárias já tem seu próprio refetch
+    }
   };
 };

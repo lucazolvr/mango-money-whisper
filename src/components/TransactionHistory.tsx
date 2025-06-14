@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowUp, ArrowDown, Search, Filter, Loader2 } from 'lucide-react';
+import { ArrowUp, ArrowDown, Search, Filter, Loader2, Building2 } from 'lucide-react';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useCategories } from '@/hooks/useCategories';
 import AddTransactionForm from './AddTransactionForm';
@@ -13,6 +13,7 @@ const TransactionHistory = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
+  const [filterSource, setFilterSource] = useState('all');
 
   const { transactions, loading: transactionsLoading } = useTransactions();
   const { categories, loading: categoriesLoading } = useCategories();
@@ -21,8 +22,11 @@ const TransactionHistory = () => {
     const matchesSearch = transaction.descricao.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || transaction.tipo === filterType;
     const matchesCategory = filterCategory === 'all' || transaction.categoria === filterCategory;
+    const matchesSource = filterSource === 'all' || 
+      (filterSource === 'manual' && !transaction.isBankTransaction) ||
+      (filterSource === 'bank' && transaction.isBankTransaction);
     
-    return matchesSearch && matchesType && matchesCategory;
+    return matchesSearch && matchesType && matchesCategory && matchesSource;
   });
 
   const totalIncome = filteredTransactions
@@ -32,6 +36,9 @@ const TransactionHistory = () => {
   const totalExpenses = filteredTransactions
     .filter(t => t.tipo === 'despesa')
     .reduce((sum, t) => sum + t.valor, 0);
+
+  const bankTransactionsCount = transactions.filter(t => t.isBankTransaction).length;
+  const manualTransactionsCount = transactions.filter(t => !t.isBankTransaction).length;
 
   if (transactionsLoading || categoriesLoading) {
     return (
@@ -47,7 +54,9 @@ const TransactionHistory = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-mango-900">Transações</h1>
-          <p className="text-mango-600 mt-1">Gerencie suas receitas e despesas</p>
+          <p className="text-mango-600 mt-1">
+            {manualTransactionsCount} manuais + {bankTransactionsCount} bancárias
+          </p>
         </div>
         <AddTransactionForm />
       </div>
@@ -121,6 +130,17 @@ const TransactionHistory = () => {
               </SelectContent>
             </Select>
 
+            <Select value={filterSource} onValueChange={setFilterSource}>
+              <SelectTrigger className="w-full md:w-48 border-mango-200">
+                <SelectValue placeholder="Origem" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as origens</SelectItem>
+                <SelectItem value="manual">Manuais</SelectItem>
+                <SelectItem value="bank">Bancárias</SelectItem>
+              </SelectContent>
+            </Select>
+
             <Select value={filterCategory} onValueChange={setFilterCategory}>
               <SelectTrigger className="w-full md:w-48 border-mango-200">
                 <SelectValue placeholder="Categoria" />
@@ -166,7 +186,15 @@ const TransactionHistory = () => {
                       )}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{transaction.descricao}</p>
+                      <div className="flex items-center space-x-2">
+                        <p className="font-medium text-gray-900">{transaction.descricao}</p>
+                        {transaction.isBankTransaction && (
+                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                            <Building2 className="h-3 w-3 mr-1" />
+                            Bancária
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex items-center space-x-2 mt-1">
                         <Badge variant="outline" className="text-xs">
                           {transaction.categoria}
@@ -174,6 +202,11 @@ const TransactionHistory = () => {
                         <span className="text-sm text-gray-500">
                           {new Date(transaction.data).toLocaleDateString('pt-BR')}
                         </span>
+                        {transaction.isBankTransaction && transaction.accountName && (
+                          <span className="text-xs text-blue-600">
+                            {transaction.accountName}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
