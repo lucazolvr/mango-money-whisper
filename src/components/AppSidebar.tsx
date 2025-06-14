@@ -22,7 +22,7 @@ const AppSidebar = ({ activeTab, onTabChange }: AppSidebarProps) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'chat', label: 'Chat', icon: MessageCircle },
-    { id: 'transactions', label: 'Histórico', icon: Clock },
+    { id: 'transactions', label: 'Transações', icon: Clock },
     { id: 'agendamentos', label: 'Agendamentos', icon: Calendar },
     { id: 'goals', label: 'Metas', icon: Target },
     { id: 'reports', label: 'Relatórios', icon: FileText },

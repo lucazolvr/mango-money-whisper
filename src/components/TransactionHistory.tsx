@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowUp, ArrowDown, Search, Filter, Loader2 } from 'lucide-react';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useCategories } from '@/hooks/useCategories';
+import AddTransactionForm from './AddTransactionForm';
 
 const TransactionHistory = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,6 +43,15 @@ const TransactionHistory = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Header com botão de adicionar */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-mango-900">Transações</h1>
+          <p className="text-mango-600 mt-1">Gerencie suas receitas e despesas</p>
+        </div>
+        <AddTransactionForm />
+      </div>
+
       {/* Resumo */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="border-green-200 bg-green-50">
