@@ -31,19 +31,27 @@ const OpenFinanceConnect = () => {
       setPluggyCredentials(parsed);
       setHasStoredCredentials(true);
       
+      console.log('🔄 Credenciais encontradas, verificando status...');
+      
       // Verificar status da conexão
       try {
         const status = await checkStatus();
         setConnectionStatus(status);
+        console.log('📊 Status da conexão:', status ? 'conectado' : 'desconectado');
       } catch (error) {
-        console.error('Erro ao verificar status:', error);
+        console.error('❌ Erro ao verificar status:', error);
         setConnectionStatus(false);
       }
+    } else {
+      console.log('ℹ️ Nenhuma credencial armazenada encontrada');
     }
   };
 
   const savePluggyCredentials = () => {
+    console.log('💾 Tentando salvar credenciais...');
+    
     if (!pluggyCredentials.clientId || !pluggyCredentials.clientSecret || !pluggyCredentials.itemIds) {
+      console.error('❌ Campos obrigatórios não preenchidos');
       toast({
         title: "Erro",
         description: "Por favor, preencha todos os campos obrigatórios",
@@ -52,12 +60,37 @@ const OpenFinanceConnect = () => {
       return;
     }
 
+    // Validar formato do Client ID (UUID)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(pluggyCredentials.clientId)) {
+      console.error('❌ Client ID deve ser um UUID válido');
+      toast({
+        title: "Erro",
+        description: "Client ID deve ser um UUID válido (formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Validar e normalizar Item IDs
     const itemIds = pluggyCredentials.itemIds.split(',').map(id => id.trim()).filter(Boolean);
     if (itemIds.length === 0) {
+      console.error('❌ Nenhum Item ID válido fornecido');
       toast({
         title: "Erro",
         description: "Por favor, forneça pelo menos um Item ID válido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar formato dos Item IDs (também devem ser UUIDs)
+    const invalidItemIds = itemIds.filter(id => !uuidRegex.test(id));
+    if (invalidItemIds.length > 0) {
+      console.error('❌ Item IDs inválidos:', invalidItemIds);
+      toast({
+        title: "Erro",
+        description: `Item IDs inválidos: ${invalidItemIds.join(', ')}. Devem ser UUIDs válidos.`,
         variant: "destructive",
       });
       return;
@@ -74,15 +107,16 @@ const OpenFinanceConnect = () => {
     setIsConfigDialogOpen(false);
     setConnectionStatus(null); // Reset status para verificar novamente
     
-    console.log('Credenciais salvas:', {
-      clientId: normalizedCredentials.clientId ? 'configurado' : 'não configurado',
-      clientSecret: normalizedCredentials.clientSecret ? 'configurado' : 'não configurado',
-      itemIds: normalizedCredentials.itemIds
+    console.log('✅ Credenciais salvas com sucesso:', {
+      clientId: normalizedCredentials.clientId ? `${normalizedCredentials.clientId.substring(0, 8)}...` : 'não definido',
+      clientSecret: normalizedCredentials.clientSecret ? 'definido' : 'não definido',
+      itemIds: normalizedCredentials.itemIds,
+      totalItemIds: itemIds.length
     });
     
     toast({
       title: "Sucesso!",
-      description: "Credenciais Pluggy configuradas com sucesso",
+      description: `Credenciais Pluggy configuradas com sucesso. ${itemIds.length} Item ID(s) configurado(s).`,
     });
   };
 
@@ -91,6 +125,8 @@ const OpenFinanceConnect = () => {
     setPluggyCredentials({ clientId: '', clientSecret: '', itemIds: '' });
     setHasStoredCredentials(false);
     setConnectionStatus(null);
+    
+    console.log('🗑️ Credenciais removidas');
     toast({
       title: "Credenciais removidas",
       description: "Configure novas credenciais quando desejar",
@@ -110,11 +146,14 @@ const OpenFinanceConnect = () => {
     try {
       setConnectionStatus(null); // Loading state
       
-      console.log('🧪 Testando conexão com Item IDs:', pluggyCredentials.itemIds);
+      console.log('🧪 Iniciando teste de conexão...');
+      console.log('📋 Testando com Item IDs:', pluggyCredentials.itemIds);
+      
       const accounts = await getAccounts(pluggyCredentials.itemIds);
       
       if (accounts.length > 0) {
         setConnectionStatus(true);
+        console.log('✅ Teste de conexão bem-sucedido!');
         toast({
           title: "Conexão bem-sucedida! 🎉",
           description: `Encontradas ${accounts.length} conta(s). Agora você pode sincronizar as transações.`,
@@ -131,6 +170,7 @@ const OpenFinanceConnect = () => {
         });
       } else {
         setConnectionStatus(false);
+        console.warn('⚠️ Conexão estabelecida mas nenhuma conta encontrada');
         toast({
           title: "Conexão estabelecida, mas...",
           description: "Nenhuma conta foi encontrada. Verifique seus Item IDs no dashboard do Pluggy.",
@@ -138,12 +178,12 @@ const OpenFinanceConnect = () => {
         });
       }
     } catch (error) {
-      console.error('🔥 Erro ao testar conexão:', error);
+      console.error('🔥 Erro no teste de conexão:', error);
       setConnectionStatus(false);
       
       toast({
         title: "Falha na conexão",
-        description: "Verifique suas credenciais e Item IDs. Consulte o console para mais detalhes.",
+        description: "Verifique suas credenciais, Item IDs e conexão de internet. Consulte o console para detalhes.",
         variant: "destructive",
       });
     }
@@ -287,22 +327,22 @@ const OpenFinanceConnect = () => {
                           <li>Conecte suas contas bancárias e obtenha os Item IDs</li>
                           <li>Cole as credenciais abaixo (múltiplos Item IDs separados por vírgula)</li>
                         </ol>
-                        <p className="mt-2 text-xs text-blue-700">
-                          <strong>Dica:</strong> No dashboard do Pluggy, cada conta conectada tem um Item ID único. 
-                          Copie todos os Item IDs das contas que deseja sincronizar.
+                        <p className="mt-2 text-xs text-blue-700 bg-blue-100 p-2 rounded">
+                          <strong>⚠️ Importante:</strong> Client ID e Item IDs devem ser UUIDs válidos no formato: 
+                          xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
                         </p>
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="clientId">Client ID *</Label>
+                    <Label htmlFor="clientId">Client ID * (UUID)</Label>
                     <Input
                       id="clientId"
                       type="text"
                       value={pluggyCredentials.clientId}
                       onChange={(e) => setPluggyCredentials({...pluggyCredentials, clientId: e.target.value})}
-                      placeholder="Seu Client ID do Pluggy"
+                      placeholder="12345678-1234-1234-1234-123456789012"
                     />
                   </div>
                   
@@ -318,7 +358,7 @@ const OpenFinanceConnect = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="itemIds">Item IDs (separados por vírgula) *</Label>
+                    <Label htmlFor="itemIds">Item IDs (UUIDs separados por vírgula) *</Label>
                     <Input
                       id="itemIds"
                       type="text"
@@ -327,7 +367,8 @@ const OpenFinanceConnect = () => {
                       placeholder="78a3db91-2b6f-4f33-914f-0c5f29c5e6b1, 47cdfe32-bef9-4b82-9ea5-41b89f207749"
                     />
                     <p className="text-xs text-gray-600 mt-1">
-                      Item IDs das suas contas conectadas no Pluggy. Encontre-os no dashboard após conectar suas contas bancárias.
+                      Item IDs das suas contas conectadas no Pluggy. Encontre-os no dashboard após conectar suas contas bancárias. 
+                      Cada Item ID deve ser um UUID válido.
                     </p>
                   </div>
                   

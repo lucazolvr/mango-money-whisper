@@ -61,7 +61,20 @@ export const usePluggy = () => {
     if (!stored) {
       throw new Error('Credenciais Pluggy não configuradas');
     }
-    return JSON.parse(stored);
+    const credentials = JSON.parse(stored);
+    
+    // Validação mais rigorosa das credenciais
+    if (!credentials.clientId || !credentials.clientSecret) {
+      throw new Error('Client ID ou Client Secret não configurados');
+    }
+    
+    console.log('🔑 Credenciais carregadas:', {
+      clientId: credentials.clientId ? `${credentials.clientId.substring(0, 8)}...` : 'não definido',
+      clientSecret: credentials.clientSecret ? 'definido' : 'não definido',
+      itemIds: credentials.itemIds
+    });
+    
+    return credentials;
   };
 
   const checkStatus = async (): Promise<boolean> => {
@@ -70,6 +83,8 @@ export const usePluggy = () => {
     try {
       const credentials = getStoredCredentials();
       
+      console.log('🔍 Verificando status da conexão Pluggy...');
+      
       const { data, error } = await supabase.functions.invoke('pluggy-connect', {
         body: { 
           action: 'status',
@@ -77,11 +92,17 @@ export const usePluggy = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro na verificação de status:', error);
+        throw error;        
+      }
       
-      return data.data?.configured || false;
+      const isConfigured = data.data?.configured || false;
+      console.log('📊 Status da configuração:', isConfigured);
+      
+      return isConfigured;
     } catch (error) {
-      console.error('Erro ao verificar status:', error);
+      console.error('💥 Erro ao verificar status:', error);
       return false;
     }
   };
@@ -93,10 +114,11 @@ export const usePluggy = () => {
     try {
       const credentials = getStoredCredentials();
       
-      console.log('🔍 Buscando contas com credenciais:', {
-        clientId: credentials.clientId ? 'configurado' : 'não configurado',
-        clientSecret: credentials.clientSecret ? 'configurado' : 'não configurado',
-        itemIds: itemIds
+      console.log('🔍 Iniciando busca de contas...');
+      console.log('🏦 Item IDs fornecidos:', itemIds);
+      console.log('🔑 Usando credenciais:', {
+        clientId: credentials.clientId ? `${credentials.clientId.substring(0, 8)}...` : 'não definido',
+        clientSecret: credentials.clientSecret ? 'definido' : 'não definido'
       });
       
       const { data, error } = await supabase.functions.invoke('pluggy-connect', {
@@ -108,13 +130,12 @@ export const usePluggy = () => {
       });
 
       if (error) {
-        console.error('❌ Erro na chamada da função:', error);
-        throw error;
+        console.error('❌ Erro na chamada da função edge:', error);
+        throw new Error(`Erro na função: ${error.message}`);
       }
       
       console.log('📝 Resposta completa da função:', JSON.stringify(data, null, 2));
       
-      // Seguir a estrutura do Actual Budget
       if (data.status === 'ok') {
         const responseData = data.data;
         
@@ -125,12 +146,12 @@ export const usePluggy = () => {
           
           // Mostrar erros específicos por Item ID
           errorItems.forEach(([itemId, error]) => {
-            console.warn(`Item ${itemId}: ${error}`);
+            console.warn(`❌ Item ${itemId}: ${error}`);
           });
           
           toast({
             title: "Problemas encontrados",
-            description: `Alguns Item IDs tiveram problemas: ${errorItems.map(([id, err]) => `${id}: ${err}`).join('; ')}`,
+            description: `Alguns Item IDs tiveram problemas. Verifique o console para detalhes.`,
             variant: "destructive",
           });
         }
@@ -139,13 +160,14 @@ export const usePluggy = () => {
         const summary = responseData.summary || {};
         
         console.log(`✅ Resultado final: ${accounts.length} contas encontradas`);
-        console.log('📊 Resumo:', summary);
+        console.log('📊 Resumo detalhado:', summary);
         
         if (accounts.length === 0) {
           const message = summary.processedItems > 0 
-            ? `Nenhuma conta encontrada nos ${summary.processedItems} Item ID(s) fornecidos. Verifique se os IDs estão corretos no dashboard do Pluggy.`
-            : 'Nenhuma conta encontrada. Verifique seus Item IDs.';
+            ? `Nenhuma conta encontrada nos ${summary.processedItems} Item ID(s) fornecidos. Verifique se os Item IDs estão corretos e as contas estão conectadas no dashboard do Pluggy.`
+            : 'Nenhuma conta encontrada. Verifique seus Item IDs no dashboard do Pluggy.';
             
+          console.warn('⚠️ Nenhuma conta encontrada');
           toast({
             title: "Nenhuma conta encontrada",
             description: message,
@@ -156,8 +178,14 @@ export const usePluggy = () => {
             id: acc.id,
             name: acc.name,
             type: acc.type,
-            balance: acc.balance
+            balance: acc.balance,
+            currency: acc.currencyCode
           })));
+          
+          toast({
+            title: "Contas encontradas!",
+            description: `${accounts.length} conta(s) encontrada(s) com sucesso.`,
+          });
         }
         
         return accounts;
@@ -165,7 +193,7 @@ export const usePluggy = () => {
         throw new Error(data.data?.error || 'Erro desconhecido na resposta');
       }
     } catch (error) {
-      console.error('💥 Erro ao buscar contas:', error);
+      console.error('💥 Erro crítico ao buscar contas:', error);
       
       let errorMessage = 'Erro desconhecido';
       if (error instanceof Error) {
