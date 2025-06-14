@@ -19,13 +19,19 @@ export interface BankTransaction {
 export const useBankTransactions = () => {
   const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { getTransactions } = usePluggy();
 
   const fetchBankTransactions = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('🚫 Usuário não autenticado, pulando busca de transações bancárias');
+      return;
+    }
     
     setLoading(true);
+    setError(null);
+    
     try {
       // Por enquanto, vamos usar um accountId fixo dos logs
       // Em produção, isso viria das conexões bancárias do usuário
@@ -37,7 +43,7 @@ export const useBankTransactions = () => {
       const result = await getTransactions(accountId, startDate.toISOString().split('T')[0]);
       
       // Acessar diretamente as propriedades do resultado
-      if (result.transactions) {
+      if (result && result.transactions && Array.isArray(result.transactions)) {
         console.log('✅ Transações bancárias encontradas:', result.transactions.length);
         
         const formattedTransactions: BankTransaction[] = result.transactions.map((transaction: any) => {
@@ -59,21 +65,35 @@ export const useBankTransactions = () => {
         
         setBankTransactions(formattedTransactions);
         console.log('💰 Transações formatadas:', formattedTransactions);
+      } else {
+        console.warn('⚠️ Nenhuma transação bancária encontrada ou formato inválido');
+        setBankTransactions([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro ao buscar transações bancárias:', error);
+      setError(error.message || 'Erro ao carregar transações bancárias');
+      setBankTransactions([]); // Definir array vazio em caso de erro
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchBankTransactions();
-  }, [user]);
+    // Só buscar se o usuário estiver autenticado
+    if (user) {
+      fetchBankTransactions();
+    } else {
+      // Se não há usuário, limpar os dados
+      setBankTransactions([]);
+      setLoading(false);
+      setError(null);
+    }
+  }, [user?.id]); // Dependência específica no ID do usuário
 
   return {
     bankTransactions,
     loading,
+    error,
     refetch: fetchBankTransactions
   };
 };
