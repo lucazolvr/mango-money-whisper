@@ -36,10 +36,11 @@ export const useBankTransactions = () => {
       console.log('🏦 Buscando transações bancárias...');
       const result = await getTransactions(accountId, startDate.toISOString().split('T')[0]);
       
-      if (result.success && result.data?.transactions) {
-        console.log('✅ Transações bancárias encontradas:', result.data.transactions.length);
+      // Acessar diretamente as propriedades do resultado
+      if (result.transactions) {
+        console.log('✅ Transações bancárias encontradas:', result.transactions.length);
         
-        const formattedTransactions: BankTransaction[] = result.data.transactions.map((transaction: any) => {
+        const formattedTransactions: BankTransaction[] = result.transactions.map((transaction: any) => {
           // Determinar se é receita ou despesa baseado no valor
           const isIncome = transaction.amount > 0;
           
@@ -52,7 +53,7 @@ export const useBankTransactions = () => {
             data: transaction.date,
             isBankTransaction: true as const,
             accountId: transaction.accountId,
-            accountName: result.data.account?.name || 'Conta Bancária'
+            accountName: result.account?.name || 'Conta Bancária'
           };
         });
         
