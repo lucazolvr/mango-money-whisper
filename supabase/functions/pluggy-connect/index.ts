@@ -24,7 +24,11 @@ serve(async (req) => {
       throw new Error('Credenciais do Pluggy não configuradas');
     }
 
-    console.log('Usando credenciais Pluggy:', { clientId: pluggyClientId ? 'configurado' : 'não configurado' });
+    console.log('Usando credenciais Pluggy:', { 
+      clientId: pluggyClientId ? 'configurado' : 'não configurado',
+      clientSecret: pluggyClientSecret ? 'configurado' : 'não configurado',
+      credentialsSource: credentials ? 'frontend' : 'environment'
+    });
 
     // Configurar Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -34,6 +38,10 @@ serve(async (req) => {
     // Obter token de acesso do Pluggy
     const getAccessToken = async () => {
       console.log('Solicitando token de acesso do Pluggy...');
+      console.log('Credenciais para autenticação:', {
+        clientId: pluggyClientId?.substring(0, 8) + '...',
+        clientSecretLength: pluggyClientSecret?.length
+      });
       
       const tokenResponse = await fetch('https://api.pluggy.ai/auth', {
         method: 'POST',
@@ -46,14 +54,17 @@ serve(async (req) => {
         }),
       });
 
+      console.log('Status da resposta do token:', tokenResponse.status);
+
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
         console.error('Erro ao obter token:', errorText);
-        throw new Error(`Erro ao obter token do Pluggy: ${tokenResponse.status}`);
+        throw new Error(`Erro ao obter token do Pluggy: ${tokenResponse.status} - ${errorText}`);
       }
 
       const tokenData = await tokenResponse.json();
-      console.log('Token obtido com sucesso');
+      console.log('Token obtido com sucesso. Tipo de token:', typeof tokenData.accessToken);
+      console.log('Primeiros caracteres do token:', tokenData.accessToken?.substring(0, 20) + '...');
       return tokenData.accessToken;
     };
 
@@ -62,17 +73,23 @@ serve(async (req) => {
         // Buscar conectores disponíveis (bancos)
         const accessToken = await getAccessToken();
         
-        console.log('Buscando conectores...');
+        console.log('Buscando conectores com token...');
+        console.log('Token para conectores:', accessToken?.substring(0, 20) + '...');
+        
         const connectorsResponse = await fetch('https://api.pluggy.ai/connectors', {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
           },
         });
+
+        console.log('Status da resposta dos conectores:', connectorsResponse.status);
+        console.log('Headers da resposta:', Object.fromEntries(connectorsResponse.headers.entries()));
 
         if (!connectorsResponse.ok) {
           const errorText = await connectorsResponse.text();
           console.error('Erro ao buscar conectores:', errorText);
-          throw new Error(`Erro ao buscar conectores: ${connectorsResponse.status}`);
+          throw new Error(`Erro ao buscar conectores: ${connectorsResponse.status} - ${errorText}`);
         }
 
         const connectors = await connectorsResponse.json();
@@ -90,6 +107,8 @@ serve(async (req) => {
         const token = await getAccessToken();
         
         console.log('Criando item para conector:', data.connectorId);
+        console.log('Parâmetros recebidos:', data.parameters);
+        
         const itemResponse = await fetch('https://api.pluggy.ai/items', {
           method: 'POST',
           headers: {
@@ -102,10 +121,12 @@ serve(async (req) => {
           }),
         });
 
+        console.log('Status da resposta do item:', itemResponse.status);
+
         if (!itemResponse.ok) {
           const errorText = await itemResponse.text();
           console.error('Erro ao criar item:', errorText);
-          throw new Error(`Erro ao criar conexão: ${itemResponse.status}`);
+          throw new Error(`Erro ao criar conexão: ${itemResponse.status} - ${errorText}`);
         }
 
         const item = await itemResponse.json();
