@@ -43,108 +43,6 @@ export const usePluggy = () => {
     return JSON.parse(stored);
   };
 
-  const getConnectors = async (): Promise<Connector[]> => {
-    if (!user) throw new Error('Usuário não autenticado');
-    
-    setLoading(true);
-    try {
-      const credentials = getStoredCredentials();
-      
-      const { data, error } = await supabase.functions.invoke('pluggy-connect', {
-        body: { 
-          action: 'getConnectors',
-          credentials
-        }
-      });
-
-      if (error) throw error;
-      
-      return data.connectors || [];
-    } catch (error) {
-      console.error('Erro ao buscar conectores:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os bancos disponíveis",
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const connectBank = async (connectorId: number, connectorName: string, parameters: any) => {
-    if (!user) throw new Error('Usuário não autenticado');
-    
-    setLoading(true);
-    try {
-      const credentials = getStoredCredentials();
-      
-      const { data, error } = await supabase.functions.invoke('pluggy-connect', {
-        body: { 
-          action: 'createItem',
-          credentials,
-          data: {
-            connectorId,
-            connectorName,
-            parameters,
-            userId: user.id
-          }
-        }
-      });
-
-      if (error) throw error;
-      
-      toast({
-        title: "Sucesso!",
-        description: "Banco conectado com sucesso",
-      });
-      
-      return data.item;
-    } catch (error) {
-      console.error('Erro ao conectar banco:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível conectar ao banco",
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getItemById = async (itemId: string) => {
-    if (!user) throw new Error('Usuário não autenticado');
-    
-    setLoading(true);
-    try {
-      const credentials = getStoredCredentials();
-      
-      const { data, error } = await supabase.functions.invoke('pluggy-connect', {
-        body: { 
-          action: 'getItemsByItemId',
-          credentials,
-          data: { itemId }
-        }
-      });
-
-      if (error) throw error;
-      
-      return data.item;
-    } catch (error) {
-      console.error('Erro ao buscar item:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível encontrar o item",
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const getAccounts = async (itemId: string): Promise<Account[]> => {
     if (!user) throw new Error('Usuário não autenticado');
     
@@ -207,12 +105,41 @@ export const usePluggy = () => {
     }
   };
 
+  const getItemById = async (itemId: string) => {
+    if (!user) throw new Error('Usuário não autenticado');
+    
+    setLoading(true);
+    try {
+      const credentials = getStoredCredentials();
+      
+      const { data, error } = await supabase.functions.invoke('pluggy-connect', {
+        body: { 
+          action: 'getItemsByItemId',
+          credentials,
+          data: { itemId }
+        }
+      });
+
+      if (error) throw error;
+      
+      return data.item;
+    } catch (error) {
+      console.error('Erro ao buscar item:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível encontrar o item",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     loading,
-    getConnectors,
-    connectBank,
-    getItemById,
     getAccounts,
-    getTransactions
+    getTransactions,
+    getItemById
   };
 };
