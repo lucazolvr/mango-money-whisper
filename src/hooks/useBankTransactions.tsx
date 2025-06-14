@@ -79,7 +79,7 @@ export const useBankTransactions = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, getTransactions]);
+  }, [user]); // Removido getTransactions da dependência
 
   useEffect(() => {
     fetchBankTransactions();
