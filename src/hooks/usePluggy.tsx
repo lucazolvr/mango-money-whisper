@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -92,7 +93,7 @@ export const usePluggy = () => {
     try {
       const credentials = getStoredCredentials();
       
-      console.log('Buscando contas com credenciais:', {
+      console.log('🔍 Buscando contas com credenciais:', {
         clientId: credentials.clientId ? 'configurado' : 'não configurado',
         clientSecret: credentials.clientSecret ? 'configurado' : 'não configurado',
         itemIds: itemIds
@@ -107,32 +108,64 @@ export const usePluggy = () => {
       });
 
       if (error) {
-        console.error('Erro na chamada da função:', error);
+        console.error('❌ Erro na chamada da função:', error);
         throw error;
       }
       
-      console.log('Resposta da função pluggy-connect:', data);
+      console.log('📝 Resposta completa da função:', JSON.stringify(data, null, 2));
       
-      if (data.status === 'error') {
-        console.error('Erro retornado pela função:', data.error);
-        throw new Error(data.error);
+      // Seguir a estrutura do Actual Budget
+      if (data.status === 'ok') {
+        const responseData = data.data;
+        
+        // Verificar se houve erros
+        if (responseData.hasError && responseData.errors) {
+          const errorItems = Object.entries(responseData.errors);
+          console.warn('⚠️ Erros encontrados:', responseData.errors);
+          
+          // Mostrar erros específicos por Item ID
+          errorItems.forEach(([itemId, error]) => {
+            console.warn(`Item ${itemId}: ${error}`);
+          });
+          
+          toast({
+            title: "Problemas encontrados",
+            description: `Alguns Item IDs tiveram problemas: ${errorItems.map(([id, err]) => `${id}: ${err}`).join('; ')}`,
+            variant: "destructive",
+          });
+        }
+        
+        const accounts = responseData.accounts || [];
+        const summary = responseData.summary || {};
+        
+        console.log(`✅ Resultado final: ${accounts.length} contas encontradas`);
+        console.log('📊 Resumo:', summary);
+        
+        if (accounts.length === 0) {
+          const message = summary.processedItems > 0 
+            ? `Nenhuma conta encontrada nos ${summary.processedItems} Item ID(s) fornecidos. Verifique se os IDs estão corretos no dashboard do Pluggy.`
+            : 'Nenhuma conta encontrada. Verifique seus Item IDs.';
+            
+          toast({
+            title: "Nenhuma conta encontrada",
+            description: message,
+            variant: "destructive",
+          });
+        } else {
+          console.log('🏦 Contas encontradas:', accounts.map(acc => ({
+            id: acc.id,
+            name: acc.name,
+            type: acc.type,
+            balance: acc.balance
+          })));
+        }
+        
+        return accounts;
+      } else {
+        throw new Error(data.data?.error || 'Erro desconhecido na resposta');
       }
-      
-      const accounts = data.data?.accounts || [];
-      console.log(`Encontradas ${accounts.length} contas:`, accounts);
-      
-      if (accounts.length === 0) {
-        console.warn('Nenhuma conta encontrada. Verificando Item IDs:', itemIds);
-        toast({
-          title: "Aviso",
-          description: `Nenhuma conta encontrada para os Item IDs fornecidos. Verifique se os IDs estão corretos: ${itemIds}`,
-          variant: "destructive",
-        });
-      }
-      
-      return accounts;
     } catch (error) {
-      console.error('Erro ao buscar contas:', error);
+      console.error('💥 Erro ao buscar contas:', error);
       
       let errorMessage = 'Erro desconhecido';
       if (error instanceof Error) {
@@ -142,7 +175,7 @@ export const usePluggy = () => {
       }
       
       toast({
-        title: "Erro",
+        title: "Erro ao buscar contas",
         description: `Não foi possível carregar as contas: ${errorMessage}`,
         variant: "destructive",
       });
@@ -164,6 +197,8 @@ export const usePluggy = () => {
     try {
       const credentials = getStoredCredentials();
       
+      console.log('🔍 Buscando transações:', { accountId, startDate, endDate });
+      
       const { data, error } = await supabase.functions.invoke('pluggy-connect', {
         body: { 
           action: 'getTransactions',
@@ -178,18 +213,27 @@ export const usePluggy = () => {
 
       if (error) throw error;
       
-      if (data.status === 'error') {
-        throw new Error(data.error);
+      if (data.status === 'ok') {
+        const responseData = data.data;
+        
+        if (responseData.hasError) {
+          throw new Error(responseData.error || 'Erro ao buscar transações');
+        }
+        
+        const summary = responseData.summary || {};
+        console.log('📊 Resumo das transações:', summary);
+        
+        return {
+          transactions: responseData.transactions || [],
+          account: responseData.account,
+          balances: responseData.balances || [],
+          startingBalance: responseData.startingBalance || 0
+        };
+      } else {
+        throw new Error(data.data?.error || 'Erro desconhecido');
       }
-      
-      return {
-        transactions: data.data?.transactions || [],
-        account: data.data?.account,
-        balances: data.data?.balances || [],
-        startingBalance: data.data?.startingBalance || 0
-      };
     } catch (error) {
-      console.error('Erro ao buscar transações:', error);
+      console.error('💥 Erro ao buscar transações:', error);
       toast({
         title: "Erro",
         description: `Não foi possível carregar as transações: ${error.message}`,

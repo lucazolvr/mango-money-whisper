@@ -110,38 +110,40 @@ const OpenFinanceConnect = () => {
     try {
       setConnectionStatus(null); // Loading state
       
-      console.log('Testando conexão com Item IDs:', pluggyCredentials.itemIds);
+      console.log('🧪 Testando conexão com Item IDs:', pluggyCredentials.itemIds);
       const accounts = await getAccounts(pluggyCredentials.itemIds);
       
       if (accounts.length > 0) {
         setConnectionStatus(true);
         toast({
-          title: "Sucesso!",
-          description: `Conexão testada! Encontradas ${accounts.length} conta(s)`,
+          title: "Conexão bem-sucedida! 🎉",
+          description: `Encontradas ${accounts.length} conta(s). Agora você pode sincronizar as transações.`,
         });
         
-        // Log das contas encontradas para debug
-        console.log('Contas encontradas:', accounts.map(acc => ({
-          id: acc.id,
-          name: acc.name,
-          type: acc.type,
-          balance: acc.balance
-        })));
+        // Log detalhado das contas (como no Actual)
+        console.log('🏦 Detalhes das contas encontradas:');
+        accounts.forEach((acc, index) => {
+          console.log(`  ${index + 1}. ${acc.name} (${acc.type})`, {
+            id: acc.id,
+            balance: acc.balance,
+            currency: acc.currencyCode || 'BRL'
+          });
+        });
       } else {
         setConnectionStatus(false);
         toast({
-          title: "Aviso",
-          description: "Conexão estabelecida, mas nenhuma conta foi encontrada. Verifique seus Item IDs.",
+          title: "Conexão estabelecida, mas...",
+          description: "Nenhuma conta foi encontrada. Verifique seus Item IDs no dashboard do Pluggy.",
           variant: "destructive",
         });
       }
     } catch (error) {
-      console.error('Erro ao testar conexão:', error);
+      console.error('🔥 Erro ao testar conexão:', error);
       setConnectionStatus(false);
       
       toast({
-        title: "Erro",
-        description: "Falha ao conectar. Verifique suas credenciais e Item IDs",
+        title: "Falha na conexão",
+        description: "Verifique suas credenciais e Item IDs. Consulte o console para mais detalhes.",
         variant: "destructive",
       });
     }
@@ -158,13 +160,13 @@ const OpenFinanceConnect = () => {
     }
 
     try {
-      console.log('Iniciando sincronização com Item IDs:', pluggyCredentials.itemIds);
+      console.log('🔄 Iniciando sincronização com Item IDs:', pluggyCredentials.itemIds);
       const accounts = await getAccounts(pluggyCredentials.itemIds);
       
       if (accounts.length === 0) {
         toast({
-          title: "Aviso",
-          description: "Nenhuma conta encontrada para sincronização. Verifique seus Item IDs no dashboard do Pluggy.",
+          title: "Nenhuma conta para sincronizar",
+          description: "Verifique seus Item IDs no dashboard do Pluggy. Certifique-se de que as contas estão conectadas.",
           variant: "destructive",
         });
         return;
@@ -175,29 +177,54 @@ const OpenFinanceConnect = () => {
       const thirtyDaysAgo = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
       const startDate = thirtyDaysAgo.toISOString().split('T')[0];
       
-      console.log(`Sincronizando ${accounts.length} conta(s) a partir de ${startDate}`);
+      console.log(`🔄 Sincronizando ${accounts.length} conta(s) a partir de ${startDate}`);
+      
+      const syncResults: Array<{account: string, transactions: number, error?: string}> = [];
       
       for (const account of accounts) {
         try {
-          console.log(`Sincronizando conta: ${account.name} (${account.id})`);
+          console.log(`🏦 Sincronizando: ${account.name} (${account.id})`);
           const result = await getTransactions(account.id, startDate);
           totalTransactions += result.transactions.length;
           
-          console.log(`Conta ${account.name}: ${result.transactions.length} transações encontradas`);
+          syncResults.push({
+            account: account.name,
+            transactions: result.transactions.length
+          });
+          
+          console.log(`✅ ${account.name}: ${result.transactions.length} transações`);
         } catch (error) {
-          console.error(`Erro ao sincronizar conta ${account.name}:`, error);
+          console.error(`❌ Erro na conta ${account.name}:`, error);
+          syncResults.push({
+            account: account.name,
+            transactions: 0,
+            error: error.message
+          });
         }
       }
 
+      // Resumo detalhado
+      console.log('📊 Resumo da sincronização:');
+      syncResults.forEach(result => {
+        if (result.error) {
+          console.log(`  ❌ ${result.account}: Erro - ${result.error}`);
+        } else {
+          console.log(`  ✅ ${result.account}: ${result.transactions} transações`);
+        }
+      });
+
+      const successfulSyncs = syncResults.filter(r => !r.error).length;
+      const failedSyncs = syncResults.filter(r => r.error).length;
+
       toast({
-        title: "Sincronização concluída!",
-        description: `${totalTransactions} transações dos últimos 30 dias sincronizadas de ${accounts.length} conta(s)`,
+        title: "Sincronização concluída! 🎉",
+        description: `${totalTransactions} transações sincronizadas de ${successfulSyncs} conta(s)${failedSyncs > 0 ? `. ${failedSyncs} conta(s) tiveram erro.` : '.'}`,
       });
     } catch (error) {
-      console.error('Erro ao sincronizar:', error);
+      console.error('💥 Erro geral na sincronização:', error);
       toast({
-        title: "Erro",
-        description: "Falha na sincronização. Verifique suas credenciais e Item IDs",
+        title: "Erro na sincronização",
+        description: "Verifique suas credenciais e Item IDs. Consulte o console para detalhes.",
         variant: "destructive",
       });
     }
