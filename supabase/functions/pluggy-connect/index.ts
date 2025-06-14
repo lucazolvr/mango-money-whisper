@@ -63,9 +63,19 @@ serve(async (req) => {
       }
 
       const tokenData = await tokenResponse.json();
-      console.log('Token obtido com sucesso. Tipo de token:', typeof tokenData.accessToken);
-      console.log('Primeiros caracteres do token:', tokenData.accessToken?.substring(0, 20) + '...');
-      return tokenData.accessToken;
+      console.log('Resposta completa do token:', tokenData);
+      
+      // Diferentes estruturas possíveis de resposta
+      const accessToken = tokenData.accessToken || tokenData.access_token || tokenData.token;
+      
+      console.log('Token obtido:', accessToken ? 'sucesso' : 'falhou');
+      console.log('Primeiros caracteres do token:', accessToken?.substring(0, 20) + '...');
+      
+      if (!accessToken) {
+        throw new Error('Token de acesso não encontrado na resposta da API');
+      }
+      
+      return accessToken;
     };
 
     switch (action) {
@@ -151,6 +161,33 @@ serve(async (req) => {
 
         return new Response(JSON.stringify({ 
           item,
+          success: true 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
+      case 'getItemsByItemId':
+        // Buscar item específico usando Item ID
+        const itemToken = await getAccessToken();
+        
+        console.log('Buscando item com ID:', data.itemId);
+        const itemByIdResponse = await fetch(`https://api.pluggy.ai/items/${data.itemId}`, {
+          headers: {
+            'Authorization': `Bearer ${itemToken}`,
+          },
+        });
+
+        if (!itemByIdResponse.ok) {
+          const errorText = await itemByIdResponse.text();
+          console.error('Erro ao buscar item:', errorText);
+          throw new Error(`Erro ao buscar item: ${itemByIdResponse.status}`);
+        }
+
+        const itemData = await itemByIdResponse.json();
+        console.log('Item encontrado:', itemData.id);
+        
+        return new Response(JSON.stringify({ 
+          item: itemData,
           success: true 
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

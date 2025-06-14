@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CreditCard, Shield, Building2, Loader2, Settings, Key, Check } from 'lucide-react';
+import { CreditCard, Shield, Building2, Loader2, Settings, Key, Check, Search } from 'lucide-react';
 import { usePluggy, Connector } from '@/hooks/usePluggy';
 import { useToast } from '@/hooks/use-toast';
 
@@ -16,10 +16,11 @@ const OpenFinanceConnect = () => {
   const [selectedConnector, setSelectedConnector] = useState<Connector | null>(null);
   const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [pluggyCredentials, setPluggyCredentials] = useState({ clientId: '', clientSecret: '' });
+  const [itemId, setItemId] = useState('');
   const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
   const [hasStoredCredentials, setHasStoredCredentials] = useState(false);
-  const { loading, getConnectors, connectBank } = usePluggy();
+  const { loading, getConnectors, connectBank, getItemById } = usePluggy();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -92,6 +93,27 @@ const OpenFinanceConnect = () => {
       setSelectedConnector(null);
     } catch (error) {
       console.error('Erro ao conectar:', error);
+    }
+  };
+
+  const handleSearchItemById = async () => {
+    if (!itemId.trim()) {
+      toast({
+        title: "Erro",
+        description: "Por favor, digite um Item ID válido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const item = await getItemById(itemId);
+      toast({
+        title: "Sucesso!",
+        description: `Item encontrado: ${item.connector?.name || 'Item conectado'}`,
+      });
+    } catch (error) {
+      console.error('Erro ao buscar item:', error);
     }
   };
 
@@ -197,6 +219,45 @@ const OpenFinanceConnect = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Buscar por Item ID */}
+      {hasStoredCredentials && (
+        <Card className="border-mango-200">
+          <CardHeader>
+            <CardTitle className="text-mango-900 flex items-center">
+              <Search className="mr-2 h-5 w-5" />
+              Buscar por Item ID
+            </CardTitle>
+            <CardDescription>
+              Se você já tem um Item ID do Pluggy, pode buscá-lo diretamente
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Digite seu Item ID do Pluggy"
+                value={itemId}
+                onChange={(e) => setItemId(e.target.value)}
+                className="flex-1"
+              />
+              <Button 
+                onClick={handleSearchItemById}
+                disabled={loading || !itemId.trim()}
+                className="bg-mango-500 hover:bg-mango-600"
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-sm text-mango-600">
+              O Item ID é fornecido quando você conecta uma conta bancária através do Pluggy
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Informação de Segurança */}
       <Card className="border-mango-200 bg-mango-50">

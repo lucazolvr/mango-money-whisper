@@ -114,6 +114,37 @@ export const usePluggy = () => {
     }
   };
 
+  const getItemById = async (itemId: string) => {
+    if (!user) throw new Error('Usuário não autenticado');
+    
+    setLoading(true);
+    try {
+      const credentials = getStoredCredentials();
+      
+      const { data, error } = await supabase.functions.invoke('pluggy-connect', {
+        body: { 
+          action: 'getItemsByItemId',
+          credentials,
+          data: { itemId }
+        }
+      });
+
+      if (error) throw error;
+      
+      return data.item;
+    } catch (error) {
+      console.error('Erro ao buscar item:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível encontrar o item",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getAccounts = async (itemId: string): Promise<Account[]> => {
     if (!user) throw new Error('Usuário não autenticado');
     
@@ -180,6 +211,7 @@ export const usePluggy = () => {
     loading,
     getConnectors,
     connectBank,
+    getItemById,
     getAccounts,
     getTransactions
   };
