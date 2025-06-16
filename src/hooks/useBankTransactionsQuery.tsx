@@ -5,7 +5,6 @@ import { usePluggy } from './usePluggy';
 import type { BankTransaction } from './useBankTransactions';
 
 type UseBankTransactionsQueryProps = {
-  accountId?: string;
   enabled?: boolean;
   onData?: (transactions: BankTransaction[]) => void;
   onError?: (error: string) => void;
@@ -18,7 +17,6 @@ type UseBankTransactionsQueryResult = {
 };
 
 export function useBankTransactionsQuery({
-  accountId,
   enabled = true,
   onData,
   onError,
@@ -26,7 +24,7 @@ export function useBankTransactionsQuery({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const { getTransactions } = usePluggy();
+  const { getAccounts, getTransactions } = usePluggy();
   const hasExecutedRef = useRef(false);
   const isUnmountedRef = useRef(false);
 
@@ -47,38 +45,69 @@ export function useBankTransactionsQuery({
     setError(null);
     
     try {
-      // Usar accountId fixo por enquanto se não fornecido
-      const targetAccountId = accountId || '566ed8f2-1fef-4537-8c21-228525715958';
+      // Obter credenciais do localStorage
+      const stored = localStorage.getItem('pluggy_credentials');
+      if (!stored) {
+        throw new Error('Credenciais Pluggy não configuradas');
+      }
+      
+      const credentials = JSON.parse(stored);
+      if (!credentials.itemIds) {
+        throw new Error('Item IDs não configurados');
+      }
+
+      console.log('🔍 Buscando contas para Item IDs:', credentials.itemIds);
+      
+      // Buscar todas as contas dos Item IDs configurados
+      const accounts = await getAccounts(credentials.itemIds);
+      
+      if (accounts.length === 0) {
+        console.warn('⚠️ Nenhuma conta encontrada');
+        onData?.([]);
+        return;
+      }
+
+      console.log(`🏦 Encontradas ${accounts.length} contas, buscando transações...`);
+      
+      // Buscar transações de todas as contas encontradas
+      let allTransactions: BankTransaction[] = [];
       const startDate = new Date();
       startDate.setMonth(startDate.getMonth() - 6); // Últimos 6 meses
+      const startDateStr = startDate.toISOString().split('T')[0];
       
-      console.log('🏦 Buscando transações bancárias para conta:', targetAccountId);
-      const result = await getTransactions(targetAccountId, startDate.toISOString().split('T')[0]);
-      
-      if (!isUnmountedRef.current && result && result.transactions && Array.isArray(result.transactions)) {
-        console.log('✅ Transações bancárias encontradas:', result.transactions.length);
-        
-        const formattedTransactions: BankTransaction[] = result.transactions.map((transaction: any) => {
-          const isIncome = transaction.amount > 0;
+      for (const account of accounts) {
+        try {
+          console.log(`💰 Buscando transações da conta: ${account.name} (${account.id})`);
+          const result = await getTransactions(account.id, startDateStr);
           
-          return {
-            id: `bank_${transaction.id}`,
-            descricao: transaction.description || 'Transação bancária',
-            valor: Math.abs(transaction.amount / 100), // Converter de centavos para reais
-            tipo: isIncome ? 'receita' : 'despesa',
-            categoria: transaction.category || 'Bancário',
-            data: transaction.date,
-            isBankTransaction: true as const,
-            accountId: transaction.accountId,
-            accountName: result.account?.name || 'Conta Bancária'
-          };
-        });
-        
-        onData?.(formattedTransactions);
-        console.log('💰 Transações formatadas:', formattedTransactions.length);
-      } else if (!isUnmountedRef.current) {
-        console.warn('⚠️ Nenhuma transação bancária encontrada ou formato inválido');
-        onData?.([]);
+          if (result && result.transactions && Array.isArray(result.transactions)) {
+            const formattedTransactions: BankTransaction[] = result.transactions.map((transaction: any) => {
+              const isIncome = transaction.amount > 0;
+              
+              return {
+                id: `bank_${transaction.id}`,
+                descricao: transaction.description || 'Transação bancária',
+                valor: Math.abs(transaction.amount / 100), // Converter de centavos para reais
+                tipo: isIncome ? 'receita' : 'despesa',
+                categoria: transaction.category || 'Bancário',
+                data: transaction.date,
+                isBankTransaction: true as const,
+                accountId: account.id,
+                accountName: account.name
+              };
+            });
+            
+            allTransactions = [...allTransactions, ...formattedTransactions];
+            console.log(`✅ ${account.name}: ${formattedTransactions.length} transações`);
+          }
+        } catch (accountError) {
+          console.error(`❌ Erro na conta ${account.name}:`, accountError);
+        }
+      }
+
+      if (!isUnmountedRef.current) {
+        console.log(`🎉 Total de transações encontradas: ${allTransactions.length}`);
+        onData?(allTransactions);
       }
     } catch (error: any) {
       if (!isUnmountedRef.current) {
@@ -93,7 +122,7 @@ export function useBankTransactionsQuery({
         setIsLoading(false);
       }
     }
-  }, [user?.id, accountId, enabled, getTransactions, onData, onError, isLoading]);
+  }, [user?.id, enabled, getAccounts, getTransactions, onData, onError, isLoading]);
 
   useEffect(() => {
     return () => {
