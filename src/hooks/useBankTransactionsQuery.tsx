@@ -107,11 +107,7 @@ export function useBankTransactionsQuery({
 
       if (!isUnmountedRef.current) {
         console.log(`🎉 Total de transações encontradas: ${allTransactions.length}`);
-<<<<<<< HEAD
         onData?.(allTransactions);
-=======
-        onData?(allTransactions);
->>>>>>> 2f1e68d652805b0c0a47d46929bbc7571e9cbafb
       }
     } catch (error: any) {
       if (!isUnmountedRef.current) {
