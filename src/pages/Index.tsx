@@ -68,7 +68,7 @@ const Index = () => {
                 <span className="text-xl font-bold">Mango</span>
               </div>
               <p className="text-mango-200 mb-2">Seu assistente financeiro de bolso</p>
-              <p className="text-sm text-mango-300">Desenvolvido com ❤️ para tornar suas finanças mais simples</p>
+              <p className="text-sm text-mango-300"> Mango onde suas finanças dão frutos 🥭</p>
             </div>
           </footer>
         </div>
