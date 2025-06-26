@@ -288,7 +288,7 @@ const OpenFinanceConnect = () => {
     <div className="space-y-6">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-mango-900 mb-2">Open Finance</h1>
-        <p className="text-mango-600">Conecte-se ao Pluggy usando suas credenciais (baseado no Actual Budget)</p>
+        <p className="text-mango-600">Conecte-se ao Pluggy usando suas credenciais</p>
       </div>
 
       {/* Configuração Pluggy */}
